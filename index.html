@@ -26,7 +26,7 @@
     body { padding: 8px; }
     .game { gap: 6px; position: relative; min-height: calc(100dvh - 16px); }
   }
-  .game { width: min(100%, 1100px, calc((100vh - 255px) * 1.4 + 40px)); min-width: min(100%, 640px); display: flex; flex-direction: column; gap: 10px; container-type: inline-size; }
+  .game { width: min(100%, 1100px, calc((100vh - 24px) * 1.05)); min-width: min(100%, 480px); display: flex; flex-direction: column; gap: 10px; container-type: inline-size; }
 
   /* ---------- paneles con esquinas cortadas ---------- */
   .pw { filter: drop-shadow(0 0 6px rgba(47,168,255,.65)); min-width: 0; }
@@ -180,13 +180,29 @@
     #pad { grid-template-columns: repeat(3, 76px); grid-template-rows: repeat(2, 76px); gap: 8px; margin-top: 6px; }
     #pad button { font-size: 30px; }
   }
-  /* en pantallas medianas/grandes todo escala con el ancho, como una imagen */
-  @container (min-width: 680px) {
+  /* en computadoras/tablets (cualquier tamaño) todo escala con el ancho del juego, como una imagen */
+  @media (min-width: 696px) {
+    .overlay { overflow-y: auto; justify-content: safe center; padding: 2cqw; }
+    .overlay h2 { font-size: max(16px, 3.2cqw); margin-bottom: 1cqw; }
+    .overlay p { font-size: max(12px, 1.75cqw); margin-bottom: 1.1cqw; }
+    .menuIcons { gap: 2.5cqw; margin-bottom: .6cqw; }
+    .menuIcons canvas { width: 7cqw !important; height: 7cqw !important; }
+    .menuIcons span { font-size: 2.4cqw !important; }
+    .btn { font-size: max(13px, 1.7cqw); padding: 1.2cqw 3.2cqw; margin-top: .6cqw; }
+    #qType { font-size: max(10px, 1.25cqw); margin-bottom: .5cqw; }
+    #timerNum { font-size: max(24px, 4cqw); }
+    #timerBox { margin-bottom: 1cqw; }
+    #qText { font-size: max(14px, 2.1cqw); margin-bottom: 1.4cqw; }
+    #qOpts { gap: .9cqw; }
+    .opt { font-size: max(12px, 1.65cqw); padding: 1.1cqw; }
+    #feedback { font-size: max(14px, 2cqw); margin-top: 1.2cqw; min-height: 2.5cqw; }
+    #toast { font-size: max(11px, 1.5cqw); }
     .panel > .in { gap: 1.1cqw; padding: .9cqw 1.4cqw; }
     .lbl { font-size: 1.05cqw; letter-spacing: 0; }
     .val { font-size: 2.5cqw; }
-    .title .t1 { font-size: 1.75cqw !important; }
-    .title .t2 { font-size: 2.2cqw !important; }
+    .title .t1 { font-size: 1.6cqw !important; }
+    .title .t2 { font-size: 1.95cqw !important; }
+    .keysRow { gap: .45cqw; }
     .keysRow svg { width: 2.3cqw; height: 2.3cqw; }
     .hearts svg { width: 2.6cqw; height: 2.6cqw; }
     .hud svg.icon { width: 3.6cqw; height: 3.6cqw; }
@@ -406,6 +422,87 @@ const QUESTIONS = [
   { t: "SEGURIDAD", q: "¿Cuál de estas contraseñas es <b>más segura</b>?", o: ["Gato#2024!Azul", "123456", "contraseña", "aaaaaa"], a: 0 },
   { t: "SEGURIDAD", q: "Te llega un mensaje: <i>\"¡Ganaste un celular! Dame tu contraseña\"</i>. ¿Qué haces?", o: ["No la doy, es una estafa", "Se la doy rápido", "Le mando mi tarjeta", "Se lo reenvío a todos"], a: 0 },
   { t: "SEGURIDAD", q: "Una computadora solo entiende dos números. ¿Cuáles?", o: ["0 y 1", "5 y 6", "8 y 9", "10 y 20"], a: 0 },
+  // ---- más acertijos y lógica ----
+  { t: "ACERTIJO", q: "¿Qué pesa más: 1 kilo de algodón o 1 kilo de hierro?", o: ["Pesan lo mismo", "El hierro", "El algodón", "Depende del día"], a: 0 },
+  { t: "ACERTIJO", q: "En una carrera adelantas al que va <b>segundo</b>. ¿En qué lugar quedas?", o: ["Segundo", "Primero", "Tercero", "Último"], a: 0 },
+  { t: "ACERTIJO", q: "Un tren <b>eléctrico</b> va hacia el norte. ¿Hacia dónde va el humo?", o: ["No tiene humo", "Al norte", "Al sur", "Hacia arriba"], a: 0 },
+  { t: "ACERTIJO", q: "3 gatos atrapan 3 ratones en 3 minutos. ¿Cuántos minutos tarda 1 gato en atrapar 1 ratón?", o: ["3", "1", "9", "6"], a: 0 },
+  { t: "ACERTIJO", q: "Si ayer fue domingo, ¿qué día es <b>mañana</b>?", o: ["Martes", "Lunes", "Sábado", "Miércoles"], a: 0 },
+  { t: "ACERTIJO", q: "Estás en una fila de 10 personas y eres el <b>primero</b>. ¿Cuántas personas hay detrás de ti?", o: ["9", "10", "11", "1"], a: 0 },
+  { t: "ACERTIJO", q: "¿Cuántas patas tienen 2 perros?", o: ["8", "4", "6", "10"], a: 0 },
+  { t: "ACERTIJO", q: "Si una docena son 12, ¿cuánto es <b>media docena</b>?", o: ["6", "12", "24", "3"], a: 0 },
+  { t: "ACERTIJO", q: "Un papá y su hijo tienen juntos 36 años. El papá tiene 30. ¿Cuántos años tiene el hijo?", o: ["6", "30", "36", "66"], a: 0 },
+  { t: "CÓDIGO", q: "Si 🍎 + 🍎 = 10, ¿cuánto vale una 🍎?", o: ["5", "10", "2", "20"], a: 0 },
+  { t: "CÓDIGO", q: "Si 🔑 = 5 y 🔒 = 3, ¿cuánto es 🔑 + 🔒?", o: ["8", "2", "15", "53"], a: 0 },
+  { t: "CÓDIGO", q: "La contraseña es el número que está <b>entre</b> 7 y 9. ¿Cuál es?", o: ["8", "7", "9", "6"], a: 0 },
+  { t: "INTRUSO", q: "¿Cuál palabra <b>NO</b> es un color?", o: ["Mesa", "Rojo", "Azul", "Verde"], a: 0 },
+  { t: "INTRUSO", q: "¿Cuál <b>NO</b> es un animal?", o: ["Silla", "Perro", "Gato", "León"], a: 0 },
+  { t: "INTRUSO", q: "¿Cuál <b>NO</b> es una fruta?", o: ["Zapato", "Mango", "Pera", "Uva"], a: 0 },
+  { t: "INTRUSO", q: "¿Cuál número es <b>par</b>?", o: ["18", "7", "13", "21"], a: 0 },
+  { t: "SERIES", q: "¿Qué sigue? <code>lunes, martes, miércoles, ?</code>", o: ["Jueves", "Viernes", "Domingo", "Lunes"], a: 0 },
+  { t: "SERIES", q: "¿Qué sigue? <code>enero, febrero, marzo, ?</code>", o: ["Abril", "Mayo", "Junio", "Diciembre"], a: 0 },
+  { t: "DEDUCCIÓN", q: "Juan es mayor que Ana. Ana es mayor que Luis. ¿Quién es el <b>menor</b>?", o: ["Luis", "Juan", "Ana", "Son iguales"], a: 0 },
+  { t: "DEDUCCIÓN", q: "¿Qué figura tiene 4 lados iguales?", o: ["Cuadrado", "Triángulo", "Círculo", "Óvalo"], a: 0 },
+  { t: "LÓGICA O", q: "Puedes entrar si tienes tarjeta <b>O</b> código. No tienes tarjeta, pero sí el código. ¿Entras?", o: ["Sí", "No", "Solo con tarjeta", "Nunca"], a: 0 },
+  { t: "LÓGICA NO", q: "La alarma suena cuando la puerta <b>NO</b> está cerrada. La puerta está abierta. ¿Suena?", o: ["Sí", "No", "Solo de día", "Nunca"], a: 0 },
+  { t: "LÓGICA Y", q: "El robot avanza solo si hay luz verde <b>Y</b> el camino está libre. Hay luz verde, pero hay una pared. ¿Avanza?", o: ["No", "Sí", "Avanza rápido", "Salta la pared"], a: 0 },
+];
+
+// ================== PREGUNTAS AL AZAR (RANDOM) ==================
+// Cada vez que se usan crean una pregunta nueva con números al azar, así nunca se repiten.
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));   // entero entre a y b
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function shuffle(arr) {                                                // mezcla Fisher-Yates
+  for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+  return arr;
+}
+// arma 4 opciones distintas: la correcta primero (a: 0) y 3 distractores
+function numOpts(ans, cands) {
+  const set = new Set([ans]);
+  for (const c of cands) if (set.size < 4 && c >= 0 && !set.has(c)) set.add(c);
+  for (let k = 1; set.size < 4; k++) { if (!set.has(ans + k)) set.add(ans + k); if (set.size < 4 && ans - k >= 0 && !set.has(ans - k)) set.add(ans - k); }
+  return [...set].map(String);
+}
+const DAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+const cap = s => s[0].toUpperCase() + s.slice(1);
+const WORDS = ["SERVIDOR", "TECLADO", "VIRUS", "PANTALLA", "ROBOT", "CODIGO", "INTERNET", "CABLE", "MOUSE", "PUERTA"];
+
+const GENERATORS = [
+  () => { const s = rnd(1, 20), d = rnd(2, 9), seq = [0, 1, 2, 3].map(i => s + i * d), ans = s + 4 * d;
+    return { t: "SERIES", q: `¿Qué número sigue? <code>${seq.join(", ")}, ?</code>`, o: numOpts(ans, [ans + 1, ans - 1, ans + d, s + 3 * d + 1]), a: 0 }; },
+  () => { const s = rnd(60, 100), d = rnd(3, 10), seq = [0, 1, 2, 3].map(i => s - i * d), ans = s - 4 * d;
+    return { t: "SERIES", q: `¿Qué número sigue? <code>${seq.join(", ")}, ?</code>`, o: numOpts(ans, [ans - d, ans + 1, ans - 1, ans + d]), a: 0 }; },
+  () => { const s = rnd(1, 5), m = pick([2, 3]), seq = [0, 1, 2, 3].map(i => s * m ** i), ans = s * m ** 4;
+    return { t: "SERIES", q: `¿Qué número sigue? <code>${seq.join(", ")}, ?</code>`, o: numOpts(ans, [seq[3] + seq[2], ans + m, seq[3] * 2 + 1, ans - s]), a: 0 }; },
+  () => { const s = rnd(2, 30), d = rnd(2, 6), seq = [0, 1, 2, 3, 4].map(i => s + i * d), ans = seq[2];
+    return { t: "SERIES", q: `¿Qué número falta? <code>${seq[0]}, ${seq[1]}, ?, ${seq[3]}, ${seq[4]}</code>`, o: numOpts(ans, [ans + 1, ans - 1, ans + d]), a: 0 }; },
+  () => { const s = rnd(0, 8), d = rnd(1, 3), L = i => String.fromCharCode(65 + s + i * d), ans = L(4);
+    const o = [...new Set([ans, L(3), String.fromCharCode(ans.charCodeAt(0) + 1), String.fromCharCode(ans.charCodeAt(0) + 2), L(5)])].slice(0, 4);
+    return { t: "SERIES", q: `¿Qué letra sigue? <code>${[0, 1, 2, 3].map(L).join(", ")}, ?</code>`, o, a: 0 }; },
+  () => { const x = rnd(5, 20), give = Math.random() < 0.5, y = rnd(2, give ? Math.min(9, x - 1) : 9), ans = give ? x - y : x + y;
+    const q = give ? `Tienes ${x} caramelos y regalas ${y}. ¿Cuántos te quedan?` : `Tienes ${x} caramelos y te regalan ${y}. ¿Cuántos tienes?`;
+    return { t: "ACERTIJO", q, o: numOpts(ans, [give ? x + y : x - y, ans + 1, ans - 1]), a: 0 }; },
+  () => { const nums = new Set(); while (nums.size < 4) nums.add(rnd(10, 99)); const arr = [...nums], big = Math.random() < 0.5;
+    const ans = big ? Math.max(...arr) : Math.min(...arr);
+    return { t: "CÓDIGO", q: `¿Cuál es el número <b>${big ? "mayor" : "menor"}</b>?`, o: [ans, ...arr.filter(n => n !== ans)].map(String), a: 0 }; },
+  () => { const d = rnd(0, 6), n = rnd(1, 6), ans = DAYS[(d + n) % 7];
+    const o = [ans, DAYS[(d + n + 1) % 7], DAYS[(d + n + 6) % 7], DAYS[(d + n + 2) % 7]].map(cap);
+    return { t: "ACERTIJO", q: `Hoy es ${DAYS[d]}. ¿Qué día será en <b>${n}</b> día${n > 1 ? "s" : ""}?`, o, a: 0 }; },
+  () => { const h = rnd(1, 12), n = rnd(2, 8), f = x => ((x - 1) % 12 + 12) % 12 + 1, ans = f(h + n);
+    return { t: "ACERTIJO", q: `Un reloj marca las <b>${h}:00</b>. ¿Qué hora marcará en ${n} horas?`,
+      o: [ans, f(ans + 1), f(ans - 1), f(h + n + 2)].map(x => x + ":00"), a: 0 }; },
+  () => { const w = pick(WORDS), rev = [...w].reverse().join("");
+    return { t: "CÓDIGO", q: `Lee la palabra al revés: <code>${rev}</code>`, o: [w, ...shuffle(WORDS.filter(x => x !== w)).slice(0, 3)], a: 0 }; },
+  () => { const key = Math.random() < 0.5, card = Math.random() < 0.5, isAnd = Math.random() < 0.5;
+    const opens = isAnd ? key && card : key || card, yn = b => b ? "tienes" : "<b>no</b> tienes";
+    return { t: isAnd ? "LÓGICA Y" : "LÓGICA O",
+      q: `La puerta abre si tienes llave <b>${isAnd ? "Y" : "O"}</b> tarjeta. ${key ? "Tienes" : "<b>No</b> tienes"} llave y ${yn(card)} tarjeta. ¿Abre?`,
+      o: opens ? ["Sí", "No", "Solo de noche", "A medias"] : ["No", "Sí", "Solo de noche", "A medias"], a: 0 }; },
+  () => { const [A, B] = shuffle(["🔴", "🔵", "🟢", "🟡", "▲", "■", "●", "★"]).slice(0, 2), len = rnd(4, 6);
+    const seq = Array.from({ length: len }, (_, i) => i % 2 ? B : A), ans = len % 2 ? B : A;
+    return { t: "SERIES", q: `¿Qué sigue? <code>${seq.join(" ")} ?</code>`, o: [ans, ans === A ? B : A, "⬛", "✖"], a: 0 }; },
+  () => { const a = rnd(2, 9), b = rnd(2, 9), ans = a * b;
+    return { t: "CÓDIGO", q: `Una caja tiene ${a} filas con ${b} cables cada una. ¿Cuántos cables hay?`, o: numOpts(ans, [a + b, ans + a, ans - b]), a: 0 }; },
 ];
 
 
@@ -792,10 +889,16 @@ function levelComplete() {
 
 // ================== PREGUNTAS ==================
 let qCurrent, qTimer, qStart, qDone, qCallback, qLastSec;
+// mitad de las veces sale una pregunta de la lista (sin repetir hasta agotarla),
+// la otra mitad una pregunta nueva generada al azar
 function nextQuestion() {
-  if (!qPool.length) qPool = [...QUESTIONS].sort(() => Math.random() - 0.5);
-  const q = qPool.pop();
-  return { ...q, opts: q.o.map((txt, i) => ({ txt, ok: i === q.a })).sort(() => Math.random() - 0.5) };
+  let q;
+  if (Math.random() < 0.5) q = pick(GENERATORS)();
+  else {
+    if (!qPool.length) qPool = shuffle([...QUESTIONS]);
+    q = qPool.pop();
+  }
+  return { ...q, opts: shuffle(q.o.map((txt, i) => ({ txt, ok: i === q.a }))) };
 }
 
 function askQuestion(title, color, cb) {
