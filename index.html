@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#020611">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Escape the Server Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020611; --panel: #061229; --cyan: #2fa8ff; --cyan-l: #7fd6ff; --green: #39ff88;
+    --yellow: #ffd23f; --red: #ff2a45; --pink: #ff3b6b; --text: #cfefff; --dim: #4a6a8a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(ellipse at top, #0a1d3d 0%, var(--bg) 70%) fixed; color: var(--text);
+    font-family: "Share Tech Mono", Consolas, monospace; min-height: 100vh;
+    display: flex; justify-content: center; padding: 12px; user-select: none; -webkit-user-select: none;
+    touch-action: manipulation; overscroll-behavior: none; -webkit-tap-highlight-color: transparent;
+  }
+  @media (max-width: 695px) {
+    body { padding: 8px; }
+    .game { gap: 6px; position: relative; min-height: calc(100dvh - 16px); }
+  }
+  .game { width: min(100%, 1100px, calc((100vh - 255px) * 1.4 + 40px)); min-width: min(100%, 640px); display: flex; flex-direction: column; gap: 10px; container-type: inline-size; }
+
+  /* ---------- paneles con esquinas cortadas ---------- */
+  .pw { filter: drop-shadow(0 0 6px rgba(47,168,255,.65)); min-width: 0; }
+  .panel {
+    --cut: 14px; background: var(--cyan); padding: 2px; height: 100%;
+    clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  }
+  .panel > .in {
+    background: linear-gradient(180deg, #0a1a38, var(--panel)); height: 100%;
+    clip-path: polygon(calc(var(--cut) - 1px) 0, 100% 0, 100% calc(100% - var(--cut) + 1px), calc(100% - var(--cut) + 1px) 100%, 0 100%, 0 calc(var(--cut) - 1px));
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  }
+  .lbl { font-family: Orbitron, sans-serif; font-size: 13px; letter-spacing: 1px; color: var(--cyan-l); }
+  .val { font-family: Orbitron, sans-serif; font-weight: 700; font-size: 28px; line-height: 1.1; }
+
+  /* ---------- HUD superior ---------- */
+  .hud { display: grid; grid-template-columns: 1.4fr 1.3fr 1.1fr 1fr 1fr; gap: 10px; }
+  .title .in { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
+  .title .t1 { font-family: Orbitron; font-weight: 700; font-size: clamp(14px, 1.9vw, 24px); white-space: nowrap; color: #dff6ff; letter-spacing: 2px; text-shadow: 0 0 8px var(--cyan); }
+  .title .t2 { font-family: Orbitron; font-weight: 900; font-size: clamp(16px, 2.3vw, 30px); white-space: nowrap; color: var(--green); letter-spacing: 1px; text-shadow: 0 0 10px var(--green); }
+  .icon { flex: none; }
+  .keysRow { display: flex; gap: 6px; margin-top: 4px; }
+  .keysRow svg { width: 26px; height: 26px; transform: rotate(-50deg); transition: .3s; }
+  .keysRow svg.got { filter: drop-shadow(0 0 5px var(--yellow)); }
+  .hearts { display: flex; gap: 4px; margin-top: 2px; }
+  .hearts svg { width: 30px; height: 30px; transition: .3s; }
+  .glowY { color: var(--yellow); text-shadow: 0 0 10px var(--yellow); }
+  .glowW { color: #e8f7ff; text-shadow: 0 0 10px var(--cyan); }
+
+  /* ---------- tablero ---------- */
+  .boardWrap { position: relative; }
+  .board .in { padding: 10px; display: block; position: relative; }
+  canvas#c { width: 100%; display: block; border-radius: 6px; }
+  .corner { position: absolute; width: 40px; height: 70px; border: 3px solid var(--yellow); filter: drop-shadow(0 0 5px var(--yellow)); pointer-events: none; z-index: 2; }
+  .corner.tl { left: -4px; top: 18px; border-right: none; border-bottom: none; border-top: none; }
+  .corner.br { right: -4px; bottom: 18px; border-left: none; border-top: none; border-bottom: none; }
+
+  .overlay {
+    position: absolute; inset: 12px; background: rgba(2, 8, 22, .93); display: none; z-index: 5;
+    flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 18px; border-radius: 6px;
+  }
+  .overlay.show { display: flex; }
+  .overlay h2 { font-family: Orbitron; font-weight: 900; font-size: clamp(20px, 3.4vw, 36px); margin-bottom: 10px; letter-spacing: 1px; }
+  .overlay p { font-size: clamp(14px, 2vw, 19px); line-height: 1.5; max-width: 640px; margin-bottom: 12px; }
+  .btn {
+    font-family: Orbitron; font-weight: 700; font-size: 18px; letter-spacing: 2px; cursor: pointer; margin-top: 8px;
+    background: var(--green); color: #02130a; border: none; padding: 14px 34px;
+    clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  }
+  .btn:hover { filter: brightness(1.15); }
+  .menuIcons { display: flex; gap: 30px; align-items: center; margin-bottom: 8px; }
+
+  #qType { font-family: Orbitron; font-size: 14px; letter-spacing: 3px; margin-bottom: 6px; }
+  #qText { font-size: clamp(16px, 2.4vw, 23px); margin-bottom: 16px; max-width: 700px; color: #fff; }
+  #qText code { color: var(--yellow); background: #12203a; padding: 1px 8px; border-radius: 4px; }
+  #qOpts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(100%, 700px); }
+  .opt {
+    background: #0b1a33; color: var(--text); border: 2px solid var(--cyan); padding: 13px 12px; cursor: pointer;
+    font-family: inherit; font-size: clamp(14px, 2vw, 18px); text-align: left;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  }
+  .opt:hover { background: #12294d; }
+  .opt b { color: var(--yellow); }
+  .opt.ok { background: #0f5132; border-color: var(--green); }
+  .opt.bad { background: #5c1010; border-color: var(--red); }
+  #timerBox { width: min(100%, 700px); margin-bottom: 12px; }
+  #timerNum { font-family: Orbitron; font-size: 44px; font-weight: 900; color: var(--yellow); text-shadow: 0 0 12px var(--yellow); }
+  #timerBar { height: 12px; background: #13213a; overflow: hidden; transform: skewX(-20deg); }
+  #timerFill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--red), var(--yellow), var(--green)); }
+  #feedback { font-family: Orbitron; font-size: 22px; font-weight: 700; margin-top: 14px; min-height: 28px; }
+
+  #toast {
+    position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 4; pointer-events: none;
+    background: rgba(6, 18, 41, .95); border: 2px solid var(--yellow); color: var(--yellow); padding: 8px 18px;
+    font-size: clamp(13px, 1.8vw, 17px); white-space: nowrap; max-width: 95%; overflow: hidden; text-overflow: ellipsis;
+    box-shadow: 0 0 14px rgba(255,210,63,.5); opacity: 0; transition: opacity .3s;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ---------- barra inferior ---------- */
+  .foot { display: grid; grid-template-columns: 100px 1.7fr 1.2fr 1.3fr; gap: 10px; }
+  .foot .robotP .in { justify-content: center; padding: 6px; }
+  .mission .in { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; font-size: clamp(13px, 1.6vw, 17px); }
+  .mission div.done { color: var(--green); }
+  .mission div.cur { color: var(--yellow); text-shadow: 0 0 6px rgba(255,210,63,.6); }
+  .mission div.todo { color: var(--dim); }
+  .prog .in { justify-content: center; }
+  .segs { display: flex; gap: 6px; width: 100%; justify-content: center; }
+  .segs i { flex: 1; max-width: 24px; height: 26px; transform: skewX(-25deg); background: #0f2342; border: 1px solid #1d3d66; transition: .3s; }
+  .segs i.on { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); border-color: var(--cyan-l); }
+  .segs i.on.y { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); border-color: #fff3b0; }
+  .lvl .in { justify-content: space-between; }
+  .lvl .lt { font-family: Orbitron; font-size: clamp(12px, 1.5vw, 15px); letter-spacing: 1px; color: #dff6ff; line-height: 1.6; }
+
+  canvas#c { touch-action: none; }
+  #pad { display: none; margin: 4px auto 0; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 64px); gap: 6px; }
+  #pad button {
+    font-size: 26px; background: #0b1a33; color: var(--green); border: 2px solid var(--cyan); border-radius: 12px;
+    touch-action: none; -webkit-touch-callout: none; box-shadow: 0 0 10px rgba(47,168,255,.4);
+  }
+  #pad button:active { background: #16325c; box-shadow: 0 0 16px var(--cyan); }
+  @media (pointer: coarse) { #pad { display: grid; } }
+
+  #btnMute {
+    position: fixed; right: 12px; bottom: 12px; z-index: 60; width: 48px; height: 48px; border-radius: 50%;
+    border: 2px solid var(--cyan); background: #0b1a33; font-size: 22px; cursor: pointer;
+    box-shadow: 0 0 12px rgba(47,168,255,.6); touch-action: manipulation;
+  }
+  #rotate {
+    display: none; position: fixed; inset: 0; z-index: 100; background: var(--bg); color: var(--yellow);
+    flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    font-family: Orbitron; gap: 12px; font-size: 18px; padding: 20px;
+  }
+  #rotate div { font-size: 54px; }
+  @media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) { #rotate { display: flex; } }
+
+  /* ---------- celular (vertical) ---------- */
+  @media (max-width: 695px) {
+    .panel { --cut: 8px; }
+    .hud { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .hud .title { grid-column: 1 / -1; }
+    .hud .title .panel > .in { flex-direction: row; justify-content: center; align-items: baseline; gap: 8px; padding: 6px 10px; }
+    .title .t1, .title .t2 { font-size: 15px !important; }
+    .hud .panel > .in { flex-direction: column; justify-content: center; gap: 2px; padding: 6px 4px; text-align: center; }
+    .hud .icon { display: none; }
+    .lbl { font-size: 9px; }
+    .val { font-size: 16px; }
+    #hKeys { font-size: 11px !important; }
+    .keysRow, .hearts { justify-content: center; gap: 2px; }
+    .keysRow svg { width: 13px; height: 13px; }
+    .hearts svg { width: 15px; height: 15px; }
+    .board .in { padding: 4px; }
+    .corner { display: none; }
+    .foot { grid-template-columns: 1fr auto; gap: 6px; }
+    .foot .robotP, .foot .prog { display: none; }
+    .mission .in { font-size: 11px; padding: 6px 10px; }
+    .lvl .in { padding: 6px 10px; }
+    .lvl .lt { font-size: 10px; }
+    .lvl svg { display: none; }
+    /* las pantallas (menú, preguntas...) ocupan todo el celular */
+    .boardWrap { position: static; }
+    .overlay { inset: 0; border-radius: 0; padding: 16px 14px 70px; justify-content: safe center; overflow-y: auto; }
+    .overlay h2 { font-size: 22px; }
+    .overlay p { font-size: 14px; }
+    .menuIcons canvas { width: 56px !important; height: 56px !important; }
+    #qType { font-size: 11px; letter-spacing: 1px; }
+    #qText { font-size: 18px; }
+    #qOpts { grid-template-columns: 1fr; }
+    .opt { font-size: 16px; padding: 14px 12px; }
+    #toast { font-size: 12px; white-space: normal; text-align: center; bottom: 8px; width: 92%; padding: 6px 10px; }
+    #pad { grid-template-columns: repeat(3, 76px); grid-template-rows: repeat(2, 76px); gap: 8px; margin-top: 6px; }
+    #pad button { font-size: 30px; }
+  }
+  /* en pantallas medianas/grandes todo escala con el ancho, como una imagen */
+  @container (min-width: 680px) {
+    .panel > .in { gap: 1.1cqw; padding: .9cqw 1.4cqw; }
+    .lbl { font-size: 1.05cqw; letter-spacing: 0; }
+    .val { font-size: 2.5cqw; }
+    .title .t1 { font-size: 1.75cqw !important; }
+    .title .t2 { font-size: 2.2cqw !important; }
+    .keysRow svg { width: 2.3cqw; height: 2.3cqw; }
+    .hearts svg { width: 2.6cqw; height: 2.6cqw; }
+    .hud svg.icon { width: 3.6cqw; height: 3.6cqw; }
+    .hud canvas.icon { width: 5cqw !important; height: 5cqw !important; }
+    #hKeys { font-size: 1.45cqw !important; }
+    .foot { grid-template-columns: 9cqw 1.7fr 1.2fr 1.3fr !important; }
+    .foot .robotP canvas { width: 5.5cqw !important; height: 5.5cqw !important; }
+    .mission .in { font-size: 1.5cqw !important; }
+    .lvl .lt { font-size: 1.35cqw !important; }
+    .lvl svg { width: 3cqw; height: 4cqw; }
+    .segs i { height: 2.4cqw; }
+  }
+</style>
+</head>
+<body>
+<div class="game">
+
+  <!-- ===== HUD ===== -->
+  <div class="hud">
+    <div class="pw title"><div class="panel"><div class="in">
+      <span class="t1">ESCAPE THE</span><span class="t2">SERVER ROOM</span>
+    </div></div></div>
+
+    <div class="pw"><div class="panel"><div class="in">
+      <canvas class="icon robotIcon" width="112" height="112" style="width:56px;height:56px"></canvas>
+      <div><div class="lbl">LLAVES</div><div class="lbl glowY" id="hKeys" style="font-size:16px">0/4</div><div class="keysRow" id="keyIcons"></div></div>
+    </div></div></div>
+
+    <div class="pw"><div class="panel"><div class="in">
+      <svg class="icon" viewBox="0 0 24 24" width="44" height="44" style="color:var(--pink);filter:drop-shadow(0 0 6px var(--pink))"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.410.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.550 11.54L12 21.35z"/></svg>
+      <div><div class="lbl">VIDAS</div><div class="hearts" id="hearts"></div></div>
+    </div></div></div>
+
+    <div class="pw"><div class="panel"><div class="in">
+      <svg class="icon" viewBox="0 0 24 24" width="40" height="40" style="color:var(--yellow);filter:drop-shadow(0 0 6px var(--yellow))"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+      <div><div class="lbl">PUNTOS</div><div class="val glowW" id="hScore">0</div></div>
+    </div></div></div>
+
+    <div class="pw"><div class="panel"><div class="in">
+      <svg class="icon" viewBox="0 0 24 24" width="42" height="42" style="color:var(--yellow);filter:drop-shadow(0 0 6px var(--yellow))"><path fill="currentColor" d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.630 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>
+      <div><div class="lbl">RÉCORD</div><div class="val glowY" id="hBest">0</div></div>
+    </div></div></div>
+  </div>
+
+  <!-- ===== TABLERO ===== -->
+  <div class="boardWrap">
+    <div class="corner tl"></div><div class="corner br"></div>
+    <div class="pw board"><div class="panel" style="--cut:22px"><div class="in">
+      <canvas id="c" width="840" height="600"></canvas>
+      <div id="toast"></div>
+
+    </div></div></div>
+
+      <div class="overlay show" id="ovMenu">
+        <div class="menuIcons">
+          <canvas class="robotIcon" width="160" height="160" style="width:80px;height:80px"></canvas>
+          <span style="font-family:Orbitron;font-size:26px;color:var(--dim)">VS</span>
+          <canvas id="virusIcon" width="160" height="160" style="width:80px;height:80px"></canvas>
+        </div>
+        <h2 style="color:var(--green);text-shadow:0 0 12px var(--green)">¡ESTÁS ATRAPADO!</h2>
+        <p>Un <b style="color:var(--red)">VIRUS</b> te persigue por la sala de servidores.
+           Hackea las <b style="color:var(--green)">4 terminales</b> resolviendo preguntas de lógica
+           y consigue las llaves para abrir la <b style="color:var(--yellow)">PUERTA</b>.</p>
+        <p>Tienes <b style="color:var(--yellow)">15 SEGUNDOS</b> por pregunta · Hay <b>3 NIVELES</b><br>
+           Si el virus te atrapa, ¡responde bien y escapas!</p>
+        <p style="color:var(--cyan-l)">Toca una flecha = 1 cuadro · Mantén presionada = avanza seguido · Toca o haz clic en la respuesta (o teclas 1 2 3 4)</p>
+        <button class="btn" id="btnStart">▶ JUGAR</button>
+      </div>
+
+      <div class="overlay" id="ovQ">
+        <div id="qType"></div>
+        <div id="timerBox"><div id="timerNum">15</div><div id="timerBar"><div id="timerFill"></div></div></div>
+        <div id="qText"></div>
+        <div id="qOpts"></div>
+        <div id="feedback"></div>
+      </div>
+
+      <div class="overlay" id="ovLevel">
+        <h2 style="color:var(--green);text-shadow:0 0 12px var(--green)" id="lvTitle"></h2>
+        <p id="lvText"></p>
+        <button class="btn" id="btnNext">SIGUIENTE NIVEL ▶</button>
+      </div>
+
+      <div class="overlay" id="ovEnd">
+        <h2 id="endTitle"></h2>
+        <p id="endText"></p>
+        <button class="btn" id="btnAgain">↻ JUGAR OTRA VEZ</button>
+      </div>
+  </div>
+
+  <!-- ===== BARRA INFERIOR ===== -->
+  <div class="foot">
+    <div class="pw robotP"><div class="panel"><div class="in">
+      <canvas class="robotIcon" width="128" height="128" style="width:64px;height:64px"></canvas>
+    </div></div></div>
+    <div class="pw mission"><div class="panel"><div class="in" id="mission"></div></div></div>
+    <div class="pw prog"><div class="panel"><div class="in"><div class="segs" id="segs"></div></div></div></div>
+    <div class="pw lvl"><div class="panel"><div class="in">
+      <div class="lt">SALA DE SERVIDORES<br><span class="glowY" id="hLevel">NIVEL 01</span></div>
+      <svg viewBox="0 0 24 32" width="34" height="44" style="color:var(--cyan-l);filter:drop-shadow(0 0 4px var(--cyan))" fill="none" stroke="currentColor" stroke-width="1.6">
+        <rect x="2" y="1" width="20" height="30" rx="2"/><line x1="5" y1="8" x2="19" y2="8"/><line x1="5" y1="13" x2="19" y2="13"/><line x1="5" y1="18" x2="19" y2="18"/><line x1="5" y1="23" x2="19" y2="23"/>
+      </svg>
+    </div></div></div>
+  </div>
+
+  <div id="pad">
+    <span></span><button data-d="up">▲</button><span></span>
+    <button data-d="left">◀</button><button data-d="down">▼</button><button data-d="right">▶</button>
+  </div>
+</div>
+
+<button id="btnMute" aria-label="Activar o quitar sonido">🔊</button>
+<div id="rotate"><div>📱↻</div><p>Gira tu celular a <b>vertical</b> para jugar</p></div>
+
+<script>
+// ================== NIVELES ==================
+// # pared · . dato · P jugador · M virus · T terminal · E salida
+const LEVELS = [
+  { name: "SALA PRINCIPAL", speed: 0.45, min: 0.34, dec: 0.03, viruses: 1, map: [
+    "#####################",
+    "#P....#.......#.....#",
+    "#.###.#.#####.#.###.#",
+    "#.#T......#......T#.#",
+    "#.#.###.#.#.#.###.#.#",
+    "#.....#.#...#.#.....#",
+    "###.#.#.##.##.#.#.###",
+    "#...#.....M.....#...#",
+    "###.#.#.##.##.#.#.###",
+    "#.....#.#...#.#.....#",
+    "#.#.###.#.#.#.###.#.#",
+    "#.#T......#......T#.#",
+    "#.###.#.#####.#.###.#",
+    "#.........E.........#",
+    "#####################",
+  ]},
+  { name: "SALA DE RESPALDO", speed: 0.38, min: 0.28, dec: 0.025, viruses: 1, map: [
+    "#####################",
+    "#P........#........T#",
+    "#.##.####.#.####.##.#",
+    "#.#.......#.......#.#",
+    "#.#.###.#####.###.#.#",
+    "#...#.....M.....#...#",
+    "###.#.###.#.###.#.###",
+    "#T....#...#...#....T#",
+    "###.#.###.#.###.#.###",
+    "#...#...........#...#",
+    "#.#.###.##.##.###.#.#",
+    "#.#.......#.......#.#",
+    "#.##.####.#.####.##.#",
+    "#T........E.........#",
+    "#####################",
+  ]},
+  { name: "NÚCLEO CENTRAL", speed: 0.40, min: 0.30, dec: 0.02, viruses: 2, map: [
+    "#####################",
+    "#P..#.....T.....#...#",
+    "#.#.#.###.#.###.#.#.#",
+    "#.#...#.......#...#.#",
+    "#.###.#.##.##.#.###.#",
+    "#T......#...#......T#",
+    "####.##.#.M.#.##.####",
+    "#......#.....#......#",
+    "#.####.#.###.#.####.#",
+    "#...................#",
+    "#.#.##.#######.##.#.#",
+    "#.#....#..T..#....#.#",
+    "#.####.#.###.#.####.#",
+    "#..........E........#",
+    "#####################",
+  ]},
+];
+const TS = 40, COLS = 21, ROWS = 15;
+const TIME_LIMIT = 15;      // segundos para responder
+const KEYS_NEEDED = 4;
+const PLAYER_STEP = 0.14;   // segundos por casilla del jugador
+
+// ================== PREGUNTAS (lógica) ==================
+// a = índice de la respuesta correcta (las opciones se mezclan solas)
+const QUESTIONS = [
+  // ---- SERIES ----
+  { t: "SERIES", q: "¿Qué número sigue? <code>3, 6, 9, 12, ?</code>", o: ["15", "14", "16", "18"], a: 0 },
+  { t: "SERIES", q: "¿Qué número sigue? <code>5, 10, 20, 40, ?</code>", o: ["80", "60", "50", "45"], a: 0 },
+  { t: "SERIES", q: "¿Qué número sigue? <code>1, 1, 2, 3, 5, 8, ?</code>", o: ["13", "11", "10", "16"], a: 0 },
+  { t: "SERIES", q: "¿Qué número sigue? <code>100, 90, 80, 70, ?</code>", o: ["60", "50", "65", "75"], a: 0 },
+  { t: "SERIES", q: "¿Qué número sigue? <code>1, 4, 9, 16, ?</code>", o: ["25", "20", "24", "32"], a: 0 },
+  { t: "SERIES", q: "¿Qué número falta? <code>2, 4, ?, 8, 10</code>", o: ["6", "5", "7", "3"], a: 0 },
+  { t: "SERIES", q: "¿Qué letra sigue? <code>A, C, E, G, ?</code>", o: ["I", "H", "J", "K"], a: 0 },
+  { t: "SERIES", q: "¿Qué sigue? <code>🔴 🔵 🔴 🔵 🔴 ?</code>", o: ["🔵", "🔴", "🟢", "🟡"], a: 0 },
+  { t: "SERIES", q: "¿Qué figura sigue? <code>▲ ■ ▲ ■ ▲ ?</code>", o: ["■", "▲", "●", "★"], a: 0 },
+  // ---- DEDUCCIÓN ----
+  { t: "DEDUCCIÓN", q: "Todos los gatos son animales. Michi es un gato. Entonces Michi es...", o: ["Un animal", "Un perro", "Una planta", "No se sabe"], a: 0 },
+  { t: "DEDUCCIÓN", q: "Ana es más alta que Luis. Luis es más alto que Pedro. ¿Quién es el <b>más bajo</b>?", o: ["Pedro", "Ana", "Luis", "Son iguales"], a: 0 },
+  { t: "DEDUCCIÓN", q: "Si llueve, el piso se moja. El piso está <b>seco</b>. ¿Llovió?", o: ["No", "Sí", "A veces", "Siempre"], a: 0 },
+  { t: "DEDUCCIÓN", q: "Ordena los cables: el <b>rojo</b> va antes que el <b>azul</b>, y el <b>verde</b> va al final.", o: ["Rojo, Azul, Verde", "Azul, Rojo, Verde", "Verde, Rojo, Azul", "Rojo, Verde, Azul"], a: 0 },
+  { t: "DEDUCCIÓN", q: "En una fila eres el 3° contando desde adelante y el 3° contando desde atrás. ¿Cuántas personas hay?", o: ["5", "6", "3", "7"], a: 0 },
+  { t: "DEDUCCIÓN", q: "Un servidor se reinicia cada 2 horas. Se reinició a las 10:00. ¿A qué hora se reinicia después de las 13:00?", o: ["14:00", "13:00", "15:00", "12:30"], a: 0 },
+  // ---- Y / O / NO (lógica de la computadora) ----
+  { t: "LÓGICA Y", q: "La puerta abre <b>solo si</b> tienes llave <b>Y</b> tarjeta. Tienes llave pero <b>no</b> tarjeta. ¿Abre?", o: ["No", "Sí", "A medias", "Solo de noche"], a: 0 },
+  { t: "LÓGICA O", q: "La alarma suena si se abre la puerta <b>O</b> la ventana. Se abrió la ventana. ¿Suena?", o: ["Sí", "No", "Solo si se abre la puerta", "Nunca"], a: 0 },
+  { t: "LÓGICA NO", q: "Si una luz <b>NO</b> está encendida, entonces está...", o: ["Apagada", "Encendida", "Rota", "Azul"], a: 0 },
+  { t: "LÓGICA Y", q: "Para entrar al servidor necesitas usuario <b>Y</b> contraseña. Tienes los dos. ¿Entras?", o: ["Sí", "No", "Solo con usuario", "Nunca"], a: 0 },
+  // ---- ACERTIJOS ----
+  { t: "ACERTIJO", q: "Un granjero tiene 10 ovejas. Se escapan todas <b>menos 3</b>. ¿Cuántas le quedan?", o: ["3", "7", "10", "0"], a: 0 },
+  { t: "ACERTIJO", q: "¿Cuántos meses del año tienen 28 días?", o: ["Todos (12)", "1", "2", "6"], a: 0 },
+  { t: "ACERTIJO", q: "El papá de María tiene 3 hijas: Lala, Lele y...", o: ["María", "Lili", "Lolo", "Lulu"], a: 0 },
+  { t: "ACERTIJO", q: "1 robot arma 1 caja en 5 minutos. ¿Cuánto tardan 5 robots en armar 5 cajas?", o: ["5 minutos", "25 minutos", "1 minuto", "10 minutos"], a: 0 },
+  { t: "ACERTIJO", q: "Tengo 8 caramelos y regalo la mitad. ¿Cuántos me quedan?", o: ["4", "2", "6", "8"], a: 0 },
+  { t: "ACERTIJO", q: "Hoy es miércoles. ¿Qué día fue <b>ayer</b>?", o: ["Martes", "Jueves", "Lunes", "Domingo"], a: 0 },
+  { t: "ACERTIJO", q: "Un reloj marca las 3:00. ¿Qué hora será en 4 horas?", o: ["7:00", "6:00", "8:00", "1:00"], a: 0 },
+  // ---- CÓDIGOS ----
+  { t: "CÓDIGO", q: "Si A=1, B=2, C=3... ¿cuánto vale <code>A + C</code>?", o: ["4", "3", "5", "6"], a: 0 },
+  { t: "CÓDIGO", q: "El candado se abre con <code>1-2-3</code> escrito <b>al revés</b>. ¿Cuál es el código?", o: ["3-2-1", "1-2-3", "2-3-1", "3-1-2"], a: 0 },
+  { t: "CÓDIGO", q: "Lee la palabra al revés: <code>RODIVRES</code>", o: ["SERVIDOR", "VERDURAS", "DIVERSO", "SERVIR"], a: 0 },
+  { t: "CÓDIGO", q: "Si <code>HOLA</code> se escribe <code>H0L4</code>, ¿cómo se escribe <code>CASA</code>?", o: ["C4S4", "CASA", "K4Z4", "C0S0"], a: 0 },
+  { t: "CÓDIGO", q: "Código secreto: A=1, B=2, C=3... ¿Qué palabra es <code>1-13-15-18</code>?", o: ["AMOR", "ROMA", "MORA", "ARMO"], a: 0 },
+  { t: "CÓDIGO", q: "¿Cuál es el número <b>mayor</b>?", o: ["77", "74", "47", "71"], a: 0 },
+  // ---- un poco de seguridad ----
+  { t: "SEGURIDAD", q: "¿Cuál de estas contraseñas es <b>más segura</b>?", o: ["Gato#2024!Azul", "123456", "contraseña", "aaaaaa"], a: 0 },
+  { t: "SEGURIDAD", q: "Te llega un mensaje: <i>\"¡Ganaste un celular! Dame tu contraseña\"</i>. ¿Qué haces?", o: ["No la doy, es una estafa", "Se la doy rápido", "Le mando mi tarjeta", "Se lo reenvío a todos"], a: 0 },
+  { t: "SEGURIDAD", q: "Una computadora solo entiende dos números. ¿Cuáles?", o: ["0 y 1", "5 y 6", "8 y 9", "10 y 20"], a: 0 },
+];
+
+
+// ================== ESTADO ==================
+const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+const $ = id => document.getElementById(id);
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+let level, walls, dots, totalDots, terminals, exitPos, startP, startM, player, viruses, wallCanvas, leds;
+let keys, lives, score, state = "menu", qPool = [], toastTimer, lastT, pAcc = 0, best = 0;
+
+try { best = +localStorage.getItem("esr_best") || 0; } catch (e) {}
+
+// ================== SONIDO ==================
+let actx, master, musicBus, muted = false;
+try { muted = localStorage.getItem("esr_muted") === "1"; } catch (e) {}
+
+// el audio solo puede arrancar después de un toque/clic del jugador (regla de los navegadores)
+function audio() {
+  if (!actx) {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    master = actx.createGain(); master.gain.value = muted ? 0 : 1; master.connect(actx.destination);
+    musicBus = actx.createGain(); musicBus.gain.value = 0.55; musicBus.connect(master);
+  }
+  if (actx.state === "suspended") actx.resume();
+  return actx;
+}
+
+function beep(f, d = 0.08, type = "square", vol = 0.05, delay = 0) {
+  try {
+    audio();
+    const o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + delay;
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g).connect(master); o.start(t0); o.stop(t0 + d);
+  } catch (e) {}
+}
+
+function setMuted(m) {
+  muted = m;
+  try { localStorage.setItem("esr_muted", m ? "1" : "0"); } catch (e) {}
+  if (master) master.gain.setTargetAtTime(m ? 0 : 1, actx.currentTime, 0.02);
+  $("btnMute").textContent = m ? "🔇" : "🔊";
+}
+
+// ================== MÚSICA DE FONDO (generada en vivo, sin archivos) ==================
+const midi = n => 440 * Math.pow(2, (n - 69) / 12);
+const CHORDS = [                       // La menor - Fa - Do - Sol (16 pasos cada uno)
+  { b: 45, a: [69, 72, 76, 81] },
+  { b: 41, a: [65, 69, 72, 77] },
+  { b: 48, a: [67, 72, 76, 79] },
+  { b: 43, a: [67, 71, 74, 79] },
+];
+const LEAD = [                         // melodía en corcheas (0 = silencio)
+  76, 0, 74, 0, 72, 0, 74, 0,   72, 0, 0, 69, 0, 72, 74, 0,
+  76, 0, 79, 0, 76, 0, 74, 72,  74, 0, 0, 0, 71, 0, 74, 0,
+];
+const TEMPOS = [112, 124, 136];        // el ritmo sube con cada nivel
+let musicTimer = null, mStep = 0, mNext = 0, mLoop = 0, noiseBuf;
+
+function musicStart() {
+  try { audio(); } catch (e) { return; }
+  if (musicTimer) return;
+  mStep = 0; mLoop = 0; mNext = actx.currentTime + 0.1;
+  musicBus.gain.setTargetAtTime(0.55, actx.currentTime, 0.05);
+  musicTimer = setInterval(musicTick, 25);
+}
+function musicStop() { clearInterval(musicTimer); musicTimer = null; }
+function musicDuck(on) { if (musicBus) musicBus.gain.setTargetAtTime(on ? 0.18 : 0.55, actx.currentTime, 0.15); }
+
+function musicTick() {
+  const sixteenth = 60 / (TEMPOS[level] || TEMPOS[0]) / 4;
+  while (mNext < actx.currentTime + 0.15) {
+    playStep(mStep, mNext, sixteenth);
+    mNext += sixteenth;
+    if (++mStep === 64) { mStep = 0; mLoop++; }
+  }
+}
+
+function playStep(s, t, len) {
+  const ch = CHORDS[s >> 4], i = s % 16;
+  if (i % 4 === 0) kick(t);
+  if (i % 4 === 2) hat(t);
+  if (i % 2 === 0) tone("triangle", midi(ch.b + (i % 4 === 2 ? 12 : 0)), t, len * 1.8, 0.16);
+  tone("square", midi(ch.a[i % 4]), t, len * 0.9, 0.022);
+  if (mLoop % 2 === 1 && i % 2 === 0 && LEAD[s >> 1]) tone("square", midi(LEAD[s >> 1]), t, len * 1.9, 0.04);
+}
+
+function tone(type, f, t, d, vol) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g).connect(musicBus); o.start(t); o.stop(t + d + 0.02);
+}
+
+function kick(t) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+  g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+  o.connect(g).connect(musicBus); o.start(t); o.stop(t + 0.16);
+}
+
+function hat(t) {
+  if (!noiseBuf) {
+    noiseBuf = actx.createBuffer(1, actx.sampleRate * 0.05, actx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const s = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
+  s.buffer = noiseBuf; f.type = "highpass"; f.frequency.value = 7000;
+  g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+  s.connect(f).connect(g).connect(musicBus); s.start(t); s.stop(t + 0.05);
+}
+
+// pausa el audio si el jugador cambia de app o de pestaña
+document.addEventListener("visibilitychange", () => {
+  if (!actx) return;
+  document.hidden ? actx.suspend() : actx.resume();
+});
+const sfx = {
+  dot: () => beep(900, 0.03, "square", 0.012),
+  ok: () => { beep(660, 0.1); beep(990, 0.15, "square", 0.05, 0.1); },
+  bad: () => beep(140, 0.35, "sawtooth", 0.06),
+  tick: () => beep(1200, 0.05, "sine", 0.06),
+  win: () => [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.18, "square", 0.05, i * 0.12)),
+};
+
+// ================== NIVEL ==================
+function loadLevel(i) {
+  level = i;
+  const L = LEVELS[i];
+  walls = []; dots = new Set(); terminals = [];
+  for (let y = 0; y < ROWS; y++) {
+    walls.push([]);
+    for (let x = 0; x < COLS; x++) {
+      const ch = L.map[y][x];
+      walls[y].push(ch === "#");
+      if (ch === ".") dots.add(x + "," + y);
+      if (ch === "P") startP = { x, y };
+      if (ch === "M") startM = { x, y };
+      if (ch === "T") terminals.push({ x, y, solved: false, lockedUntil: 0 });
+      if (ch === "E") exitPos = { x, y };
+    }
+  }
+  totalDots = dots.size;
+  keys = 0; pAcc = 0;
+  player = makeEntity(startP);
+  const now = performance.now();
+  viruses = Array.from({ length: L.viruses }, (_, k) => Object.assign(makeEntity(startM),
+    { step: L.speed, acc: 0, frozenUntil: now + 3000 + k * 3000, wander: k ? 0.35 : 0 }));
+  prerenderWalls();
+  updateHud();
+}
+
+function makeEntity(p) { return { x: p.x, y: p.y, fx: p.x, fy: p.y, t: 1, dir: null, next: null }; }
+const free = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS && !walls[y][x];
+
+// ================== HUD ==================
+const KEY_SVG = '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>';
+const HEART_SVG = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+$("keyIcons").innerHTML = KEY_SVG.repeat(KEYS_NEEDED);
+$("hearts").innerHTML = HEART_SVG.repeat(3);
+$("segs").innerHTML = "<i></i>".repeat(10);
+
+function updateHud() {
+  $("hKeys").textContent = keys + "/" + KEYS_NEEDED;
+  [...$("keyIcons").children].forEach((k, i) => {
+    k.classList.toggle("got", i < keys); k.style.color = i < keys ? "var(--yellow)" : "var(--cyan-l)";
+  });
+  [...$("hearts").children].forEach((h, i) => {
+    h.style.color = i < lives ? "var(--pink)" : "#2a3550";
+    h.style.filter = i < lives ? "drop-shadow(0 0 5px var(--pink))" : "none";
+  });
+  $("hScore").textContent = score;
+  $("hBest").textContent = Math.max(best, score);
+  $("hLevel").textContent = "NIVEL 0" + (level + 1) + " / 03";
+
+  const steps = [["Encuentra las terminales", keys > 0], ["Consigue las 4 llaves", keys >= KEYS_NEEDED], ["¡Escapa por la puerta!", false]];
+  let cur = false;
+  $("mission").innerHTML = steps.map(([txt, done]) => {
+    const cls = done ? "done" : cur ? "todo" : "cur";
+    if (!done) cur = true;
+    return `<div class="${cls}">${done ? "✓" : ">"} ${txt}</div>`;
+  }).join("");
+
+  const prog = (keys / KEYS_NEEDED) * 0.8 + (1 - dots.size / totalDots) * 0.2;
+  const on = Math.round(prog * 10);
+  [...$("segs").children].forEach((s, i) => { s.className = (i < on ? "on" : "") + (i >= 7 ? " y" : ""); });
+}
+
+function toast(t) {
+  $("toast").textContent = t; $("toast").classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").classList.remove("show"), 2600);
+}
+
+function show(id, on) { $(id).classList.toggle("show", on); }
+
+// ================== CONTROLES ==================
+const KEYMAP = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", w: "up", s: "down", a: "left", d: "right", W: "up", S: "down", A: "left", D: "right" };
+document.addEventListener("keydown", e => {
+  if (state === "question" && /^[1-4]$/.test(e.key)) { answer(+e.key - 1); return; }
+  if (e.key === "m" || e.key === "M") { setMuted(!muted); return; }
+  // toque corto = un cuadro · mantener presionado = avanza seguido
+  if (KEYMAP[e.key]) { e.preventDefault(); if (!e.repeat) hold(KEYMAP[e.key]); }
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    if (state === "menu" || state === "end") startGame();
+    else if (state === "levelDone") nextLevel();
+  }
+});
+document.querySelectorAll("#pad button").forEach(b =>
+  ["pointerdown", "pointerup", "pointerleave", "pointercancel"].forEach(ev =>
+    b.addEventListener(ev, e => { e.preventDefault(); ev === "pointerdown" ? hold(b.dataset.d) : release(b.dataset.d); })));
+$("pad").addEventListener("contextmenu", e => e.preventDefault());
+$("btnMute").onclick = () => { try { audio(); } catch (e) {} setMuted(!muted); };
+setMuted(muted);
+document.addEventListener("keyup", e => { if (KEYMAP[e.key]) release(KEYMAP[e.key]); });
+window.addEventListener("blur", () => held = null);
+let touchStart = null;
+cv.addEventListener("touchstart", e => { touchStart = e.touches[0]; }, { passive: true });
+cv.addEventListener("touchend", e => {
+  if (!touchStart || !player) return;
+  const t = e.changedTouches[0], dx = t.clientX - touchStart.clientX, dy = t.clientY - touchStart.clientY;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) > 20)
+    press(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+  touchStart = null;
+});
+$("btnStart").onclick = startGame;
+$("btnAgain").onclick = startGame;
+$("btnNext").onclick = nextLevel;
+
+function startGame() {
+  lives = 3; score = 0;
+  loadLevel(0);
+  show("ovMenu", false); show("ovEnd", false); show("ovLevel", false);
+  musicStart();
+  state = "play"; toast("NIVEL 1 · " + LEVELS[0].name + " · ¡Busca las terminales!");
+}
+
+function nextLevel() {
+  loadLevel(level + 1);
+  show("ovLevel", false);
+  state = "play";
+  toast("NIVEL " + (level + 1) + " · " + LEVELS[level].name + (LEVELS[level].viruses > 1 ? " · ¡2 VIRUS!" : ""));
+}
+
+// ================== MOVIMIENTO ==================
+function moveTo(e, nx, ny) { e.fx = e.x; e.fy = e.y; e.x = nx; e.y = ny; e.t = 0; }
+
+function press(d) { if (state === "play" && player) player.next = d; }
+
+// dirección mantenida: si se sostiene más de HOLD_DELAY, el robot sigue avanzando
+const HOLD_DELAY = 200; // ms
+let held = null, heldSince = 0;
+function hold(d) { held = d; heldSince = performance.now(); press(d); }
+function release(d) { if (held === d) held = null; }
+
+// mueve al jugador exactamente una casilla en la dirección pedida
+function stepPlayer() {
+  const p = player, [dx, dy] = DIRS[p.next];
+  p.dir = p.next; p.next = null;
+  if (!free(p.x + dx, p.y + dy)) return false;
+  moveTo(p, p.x + dx, p.y + dy);
+  return true;
+}
+
+function stepVirus(v) {
+  // a veces deambula al azar (para que 2 virus no vayan pegados)
+  if (Math.random() < v.wander) {
+    const opts = Object.values(DIRS).filter(d => free(v.x + d[0], v.y + d[1]) && !(v.x + d[0] === v.fx && v.y + d[1] === v.fy));
+    const d = opts[Math.floor(Math.random() * opts.length)];
+    if (d) return moveTo(v, v.x + d[0], v.y + d[1]);
+  }
+  // BFS: camino más corto hacia el jugador
+  const start = v.x + "," + v.y, target = player.x + "," + player.y;
+  const prev = new Map([[start, null]]), queue = [[v.x, v.y]];
+  while (queue.length) {
+    const [cx, cy] = queue.shift();
+    if (cx + "," + cy === target) break;
+    for (const d of Object.values(DIRS)) {
+      const nx = cx + d[0], ny = cy + d[1], k = nx + "," + ny;
+      if (free(nx, ny) && !prev.has(k)) { prev.set(k, cx + "," + cy); queue.push([nx, ny]); }
+    }
+  }
+  let k = target;
+  if (!prev.has(k) || k === start) return;
+  while (prev.get(k) !== start) k = prev.get(k);
+  const [nx, ny] = k.split(",").map(Number);
+  moveTo(v, nx, ny);
+}
+
+function caught(v) {
+  const p = player;
+  return (p.x === v.x && p.y === v.y) ||
+         (p.x === v.fx && p.y === v.fy && v.x === p.fx && v.y === p.fy && v.t < 1 && p.t < 1);
+}
+
+function freezeViruses(ms) {
+  const now = performance.now();
+  viruses.forEach(v => v.frozenUntil = Math.max(v.frozenUntil, now + ms));
+}
+
+function resetViruses(ms) {
+  const now = performance.now();
+  viruses = viruses.map((v, k) => Object.assign(makeEntity(startM), { step: v.step, acc: 0, wander: v.wander, frozenUntil: now + ms + k * 1500 }));
+}
+
+function update(dt, now) {
+  if (state !== "play") return;
+  const p = player;
+
+  p.t = Math.min(1, p.t + dt / PLAYER_STEP);
+  if (!p.next && held && p.t >= 1 && now - heldSince >= HOLD_DELAY) p.next = held;
+  if (p.next && p.t >= 1) {
+    if (stepPlayer()) onPlayerTile();
+    if (state !== "play") return;
+  }
+
+  for (const v of viruses) {
+    if (now < v.frozenUntil) continue;
+    v.acc += dt; v.t = Math.min(1, v.t + dt / v.step);
+    if (v.acc >= v.step) { v.acc = 0; stepVirus(v); }
+  }
+
+  if (viruses.some(caught)) {
+    state = "question"; sfx.bad();
+    askQuestion("⚠ ¡EL VIRUS TE ATRAPÓ! RESPONDE PARA ESCAPAR", "var(--red)", ok => {
+      if (ok) { score += 50; toast("✅ ¡Escapaste! El virus quedó congelado."); }
+      else { lives--; toast("💥 El virus te infectó. -1 vida"); }
+      updateHud();
+      if (lives <= 0) return endGame(false);
+      if (!ok) { player = makeEntity(startP); pAcc = 0; }
+      resetViruses(ok ? 3000 : 2000);
+      state = "play";
+    });
+  }
+}
+
+function onPlayerTile() {
+  const p = player, k = p.x + "," + p.y;
+  if (dots.delete(k)) { score += 10; sfx.dot(); updateHud(); }
+
+  const term = terminals.find(t => t.x === p.x && t.y === p.y && !t.solved);
+  if (term) {
+    if (performance.now() < term.lockedUntil) { toast("🔒 Terminal bloqueada... vuelve en unos segundos"); return; }
+    state = "question";
+    askQuestion("▣ TERMINAL " + (terminals.indexOf(term) + 1) + " · HACKEO", "var(--green)", ok => {
+      if (ok) {
+        term.solved = true; keys++; score += 100;
+        const L = LEVELS[level];
+        viruses.forEach(v => v.step = Math.max(L.min, v.step - L.dec));
+        toast(keys >= KEYS_NEEDED ? "🔓 ¡PUERTA ABIERTA! Corre hacia la salida" : "🔑 ¡Llave obtenida! El virus se enfurece...");
+      } else {
+        term.lockedUntil = performance.now() + 4000;
+        toast("❌ Acceso denegado. Terminal bloqueada 4 segundos.");
+      }
+      updateHud();
+      freezeViruses(900);
+      state = "play";
+    });
+    return;
+  }
+
+  if (p.x === exitPos.x && p.y === exitPos.y) {
+    if (keys >= KEYS_NEEDED) levelComplete();
+    else toast("🚪 Puerta cerrada: te faltan " + (KEYS_NEEDED - keys) + " llave(s)");
+  }
+}
+
+function levelComplete() {
+  sfx.win();
+  score += 300 + (dots.size === 0 ? 300 : 0);
+  if (level >= LEVELS.length - 1) return endGame(true);
+  const bonusLife = lives < 3;
+  lives = Math.min(3, lives + 1);
+  updateHud();
+  state = "levelDone";
+  const N = LEVELS[level + 1];
+  $("lvTitle").textContent = "¡NIVEL " + (level + 1) + " COMPLETADO!";
+  $("lvText").innerHTML = "+300 puntos" + (bonusLife ? " · <span style='color:var(--pink)'>+1 vida ❤</span>" : "") +
+    "<br><br>Siguiente: <b style='color:var(--yellow)'>NIVEL " + (level + 2) + " · " + N.name + "</b><br>" +
+    (N.viruses > 1 ? "<b style='color:var(--red)'>⚠ ¡Ahora hay 2 VIRUS!</b>" : "<b style='color:var(--red)'>⚠ El virus es más rápido</b>");
+  show("ovLevel", true);
+}
+
+// ================== PREGUNTAS ==================
+let qCurrent, qTimer, qStart, qDone, qCallback, qLastSec;
+function nextQuestion() {
+  if (!qPool.length) qPool = [...QUESTIONS].sort(() => Math.random() - 0.5);
+  const q = qPool.pop();
+  return { ...q, opts: q.o.map((txt, i) => ({ txt, ok: i === q.a })).sort(() => Math.random() - 0.5) };
+}
+
+function askQuestion(title, color, cb) {
+  qCurrent = nextQuestion(); qCallback = cb; qDone = false; qLastSec = TIME_LIMIT;
+  $("qType").innerHTML = title + " · <span style='color:var(--cyan-l)'>" + qCurrent.t + "</span>";
+  $("qType").style.color = color;
+  $("qText").innerHTML = qCurrent.q;
+  $("feedback").textContent = "";
+  $("qOpts").innerHTML = "";
+  qCurrent.opts.forEach((o, i) => {
+    const b = document.createElement("button");
+    b.className = "opt"; b.innerHTML = "<b>" + (i + 1) + ")</b> " + o.txt;
+    b.onclick = () => answer(i);
+    $("qOpts").appendChild(b);
+  });
+  show("ovQ", true);
+  musicDuck(true);   // baja la música mientras piensa
+  qStart = performance.now();
+  clearInterval(qTimer);
+  qTimer = setInterval(() => {
+    const left = Math.max(0, TIME_LIMIT - (performance.now() - qStart) / 1000), sec = Math.ceil(left);
+    $("timerNum").textContent = sec;
+    $("timerFill").style.width = (left / TIME_LIMIT * 100) + "%";
+    if (sec < qLastSec) { qLastSec = sec; if (sec <= 3 && sec > 0) sfx.tick(); }
+    if (left <= 0) answer(-1);
+  }, 50);
+}
+
+function answer(i) {
+  if (qDone || state !== "question") return; qDone = true; clearInterval(qTimer);
+  const btns = $("qOpts").children, ok = i >= 0 && qCurrent.opts[i].ok;
+  qCurrent.opts.forEach((o, j) => { if (o.ok) btns[j].classList.add("ok"); else if (j === i) btns[j].classList.add("bad"); });
+  $("feedback").textContent = i < 0 ? "⏰ ¡SE ACABÓ EL TIEMPO!" : ok ? "✅ ¡CORRECTO!" : "❌ INCORRECTO";
+  $("feedback").style.color = ok ? "var(--green)" : "var(--red)";
+  ok ? sfx.ok() : sfx.bad();
+  setTimeout(() => { show("ovQ", false); musicDuck(false); qCallback(ok); }, 1300);
+}
+
+function endGame(win) {
+  state = "end";
+  musicStop();
+  if (win) sfx.win();
+  else [392, 330, 262, 196].forEach((f, i) => beep(f, 0.25, "triangle", 0.08, i * 0.18));
+  if (win) score += lives * 200;
+  const record = score > best;
+  if (record) { best = score; try { localStorage.setItem("esr_best", best); } catch (e) {} }
+  updateHud();
+  $("endTitle").textContent = win ? "¡ESCAPASTE DEL SERVER ROOM!" : "SISTEMA INFECTADO";
+  $("endTitle").style.color = win ? "var(--green)" : "var(--red)";
+  $("endTitle").style.textShadow = "0 0 12px " + (win ? "var(--green)" : "var(--red)");
+  $("endText").innerHTML = (win ? "¡Superaste los 3 niveles! Eres un verdadero hacker ético 🛡️<br>" :
+      "El virus tomó el control en el nivel " + (level + 1) + "...<br>") +
+    "Puntuación final: <b style='color:var(--yellow);font-size:1.4em'>" + score + "</b>" + (record ? "<br>🏆 ¡NUEVO RÉCORD!" : "");
+  show("ovEnd", true);
+}
+
+// ================== DIBUJO ==================
+function rr(c, x, y, w, h, r) {
+  c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+
+function prerenderWalls() {
+  wallCanvas = document.createElement("canvas");
+  wallCanvas.width = cv.width; wallCanvas.height = cv.height;
+  const c = wallCanvas.getContext("2d");
+  c.fillStyle = "#030b18"; c.fillRect(0, 0, cv.width, cv.height);
+  c.strokeStyle = "rgba(47,168,255,0.05)"; c.lineWidth = 1;
+  for (let x = 0; x <= COLS; x++) { c.beginPath(); c.moveTo(x * TS, 0); c.lineTo(x * TS, cv.height); c.stroke(); }
+  for (let y = 0; y <= ROWS; y++) { c.beginPath(); c.moveTo(0, y * TS); c.lineTo(cv.width, y * TS); c.stroke(); }
+  leds = [];
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    if (!walls[y][x]) continue;
+    const px = x * TS + 3, py = y * TS + 3, s = TS - 6;
+    const g = c.createLinearGradient(px, py, px, py + s);
+    g.addColorStop(0, "#0c4aa8"); g.addColorStop(1, "#072a66");
+    c.shadowColor = "#1e90ff"; c.shadowBlur = 12;
+    c.fillStyle = g; rr(c, px, py, s, s, 4); c.fill();
+    c.shadowBlur = 0;
+    c.strokeStyle = "#3fb8ff"; c.lineWidth = 2; rr(c, px, py, s, s, 4); c.stroke();
+    c.strokeStyle = "rgba(170,225,255,0.18)"; c.lineWidth = 1; rr(c, px + 5, py + 5, s - 10, s - 10, 2); c.stroke();
+    if (Math.random() < 0.22) leds.push({ x: px + 6 + Math.random() * (s - 14), y: py + 6 + Math.random() * (s - 14), col: Math.random() < 0.8 ? "#ffd23f" : "#9fb3c8", ph: Math.random() * 6 });
+  }
+}
+
+function drawRobot(c, x, y, sc, dir, t) {
+  c.save(); c.translate(x, y + Math.sin(t / 130) * 1); c.scale(sc, sc);
+  c.shadowColor = "#ffd23f"; c.shadowBlur = 12;
+  c.strokeStyle = "#e0a800"; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(0, -12); c.lineTo(0, -17); c.stroke();
+  c.fillStyle = "#ffe066"; c.beginPath(); c.arc(0, -18.5, 2.8, 0, 7); c.fill();
+  c.fillStyle = "#d99a00"; rr(c, -15.5, -8, 4.5, 9, 1.5); c.fill(); rr(c, 11, -8, 4.5, 9, 1.5); c.fill();
+  c.fillStyle = "#ffd23f"; rr(c, -12, -13, 24, 18, 5); c.fill();
+  c.shadowBlur = 0;
+  c.fillStyle = "#0b1733"; rr(c, -9, -9, 18, 10.5, 3); c.fill();
+  const ex = dir === "left" ? -1.5 : dir === "right" ? 1.5 : 0, ey = dir === "up" ? -1 : dir === "down" ? 1 : 0;
+  c.fillStyle = "#5fd7ff"; c.shadowColor = "#5fd7ff"; c.shadowBlur = 6;
+  const blink = (t % 3000) < 120 ? 1 : 5;
+  rr(c, -6.5 + ex, -6.5 + ey + (5 - blink) / 2, 4.5, blink, 1); c.fill();
+  rr(c, 2 + ex, -6.5 + ey + (5 - blink) / 2, 4.5, blink, 1); c.fill();
+  c.shadowBlur = 0;
+  c.fillStyle = "#f5c518"; rr(c, -7.5, 6, 15, 7.5, 2); c.fill();
+  c.fillStyle = "#0b1733"; rr(c, -3.5, 8.3, 7, 2.4, 1); c.fill();
+  c.fillStyle = "#d99a00"; rr(c, -7.5, 13.5, 5.5, 3.5, 1); c.fill(); rr(c, 2, 13.5, 5.5, 3.5, 1); c.fill();
+  c.restore();
+}
+
+function srand(seed) { const s = Math.sin(seed) * 43758.5453; return s - Math.floor(s); }
+
+function drawVirus(c, x, y, sc, t, frozen, seed = 0) {
+  c.save(); c.translate(x, y); c.scale(sc, sc);
+  const col = frozen ? "#4aa3ff" : "#ff2236", dark = frozen ? "#123a7a" : "#7a0010";
+  // efecto glitch
+  if (!frozen) {
+    const f = Math.floor(t / 90) + seed * 100;
+    for (let i = 0; i < 7; i++) {
+      const side = srand(f + i * 3.1) < 0.5 ? -1 : 1, gy = -13 + srand(f + i * 7.7) * 26;
+      const gx = side * (15 + srand(f + i * 1.3) * 9), w = 3 + srand(f + i * 5.9) * 8;
+      c.fillStyle = srand(f + i * 9.1) < 0.75 ? "rgba(255,34,54,.85)" : "rgba(255,255,255,.8)";
+      c.fillRect(side < 0 ? gx - w : gx, gy, w, 1.8);
+    }
+  }
+  // cuerpo con púas
+  const rot = t / 900;
+  c.shadowColor = col; c.shadowBlur = 16; c.fillStyle = col;
+  c.beginPath();
+  for (let i = 0; i < 24; i++) {
+    const r = i % 2 ? 12.5 : 16.5, a = rot + i / 24 * Math.PI * 2;
+    c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  c.closePath(); c.fill();
+  c.shadowBlur = 0;
+  const g = c.createRadialGradient(0, 0, 2, 0, 0, 12);
+  g.addColorStop(0, col); g.addColorStop(1, dark);
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, 11, 0, 7); c.fill();
+  // ojos enojados
+  c.fillStyle = "#fff"; c.shadowColor = "#fff"; c.shadowBlur = 6;
+  c.beginPath(); c.moveTo(-8, -4); c.lineTo(-1.5, -1); c.lineTo(-2.5, 3); c.lineTo(-7.5, 2); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(8, -4); c.lineTo(1.5, -1); c.lineTo(2.5, 3); c.lineTo(7.5, 2); c.closePath(); c.fill();
+  c.shadowBlur = 0;
+  c.fillStyle = dark; c.fillRect(-3, 5.5, 6, 1.6);
+  c.restore();
+}
+
+function drawTerminal(c, t, now) {
+  const x = t.x * TS + TS / 2, y = t.y * TS + TS / 2, locked = now < t.lockedUntil;
+  const col = t.solved ? "#4a6a8a" : locked ? "#ff2a45" : "#39ff88";
+  c.save(); c.translate(x, y);
+  c.shadowColor = col; c.shadowBlur = t.solved ? 0 : 12 + Math.sin(now / 220) * 6;
+  c.fillStyle = t.solved ? "#0a1424" : "#05261a"; rr(c, -14, -13, 28, 19, 3); c.fill();
+  c.strokeStyle = col; c.lineWidth = 2.2; rr(c, -14, -13, 28, 19, 3); c.stroke();
+  c.fillStyle = col; c.fillRect(-3, 6, 6, 4); c.fillRect(-9, 10, 18, 2.5);
+  c.shadowBlur = 0;
+  c.font = "bold 12px 'Share Tech Mono', monospace"; c.textAlign = "center"; c.textBaseline = "middle";
+  c.fillText(t.solved ? "✓" : locked ? "X" : (Math.floor(now / 500) % 2 ? ">_" : ">"), 0, -3.5);
+  c.restore();
+}
+
+function drawDoor(c, now) {
+  const open = keys >= KEYS_NEEDED, col = open ? "#39ff88" : "#ffd23f";
+  c.save(); c.translate(exitPos.x * TS + TS / 2, exitPos.y * TS + TS / 2);
+  c.shadowColor = col; c.shadowBlur = 14 + (open ? Math.sin(now / 150) * 8 : 0);
+  c.fillStyle = open ? "#06321d" : "#3a2c00"; rr(c, -16, -16, 32, 32, 3); c.fill();
+  c.strokeStyle = col; c.lineWidth = 2.5; rr(c, -16, -16, 32, 32, 3); c.stroke();
+  c.shadowBlur = 0; c.lineWidth = 2;
+  [-1, 1].forEach(s => { c.beginPath(); c.moveTo(s * 11, -6); c.lineTo(s * 14, 0); c.lineTo(s * 11, 6); c.stroke(); });
+  c.fillStyle = col; rr(c, -6, -1, 12, 10, 2); c.fill();
+  c.lineWidth = 2.5; c.beginPath();
+  if (open) c.arc(-4, -3, 4, Math.PI, 0); else c.arc(0, -1, 4.2, Math.PI, 0);
+  c.stroke();
+  c.fillStyle = open ? "#06321d" : "#3a2c00"; c.fillRect(-1, 2.5, 2, 3.5);
+  c.restore();
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function draw(now) {
+  if (!wallCanvas) return;
+  ctx.drawImage(wallCanvas, 0, 0);
+  leds.forEach(l => { if (Math.sin(now / 400 + l.ph) > -0.3) { ctx.fillStyle = l.col; ctx.fillRect(l.x, l.y, 4, 4); } });
+
+  ctx.fillStyle = "#5fe6ff"; ctx.shadowColor = "#5fe6ff"; ctx.shadowBlur = 6;
+  dots.forEach(k => { const [x, y] = k.split(",").map(Number); ctx.fillRect(x * TS + 17.5, y * TS + 17.5, 5, 5); });
+  ctx.shadowBlur = 0;
+
+  terminals.forEach(t => drawTerminal(ctx, t, now));
+  drawDoor(ctx, now);
+
+  const moving = state === "play";
+  const pt = moving ? player.t : 1;
+  const px = lerp(player.fx, player.x, pt) * TS + TS / 2, py = lerp(player.fy, player.y, pt) * TS + TS / 2;
+  if (moving && player.dir && pt < 1) {   // estela
+    const [dx, dy] = DIRS[player.dir];
+    ctx.fillStyle = "#ffd23f";
+    for (let i = 1; i <= 3; i++) { ctx.globalAlpha = 0.6 / i; ctx.fillRect(px - dx * (12 + i * 7) - 3, py - dy * (12 + i * 7) - 1.5, 6, 3); }
+    ctx.globalAlpha = 1;
+  }
+  drawRobot(ctx, px, py, 1.05, player.dir, now);
+
+  viruses.forEach((v, k) => {
+    const vt = moving ? v.t : 1;
+    const frozen = now < v.frozenUntil;
+    drawVirus(ctx, lerp(v.fx, v.x, vt) * TS + TS / 2, lerp(v.fy, v.y, vt) * TS + TS / 2, 1.15, now,
+      frozen && Math.floor(now / 160) % 2 === 0, k);
+  });
+}
+
+// iconos del HUD
+function drawIcons(now) {
+  document.querySelectorAll(".robotIcon").forEach(c => {
+    const x = c.getContext("2d"); x.clearRect(0, 0, c.width, c.height);
+    drawRobot(x, c.width / 2, c.height / 2 + c.width * 0.03, c.width / 42, "down", now);
+  });
+  const vc = $("virusIcon"), vx = vc.getContext("2d");
+  vx.clearRect(0, 0, vc.width, vc.height);
+  drawVirus(vx, vc.width / 2, vc.height / 2, vc.width / 50, now, false);
+}
+
+function loop(t) {
+  const dt = Math.min(0.05, (t - (lastT || t)) / 1000); lastT = t;
+  update(dt, t);
+  draw(t);
+  drawIcons(t);
+  requestAnimationFrame(loop);
+}
+
+lives = 3; score = 0;
+loadLevel(0); state = "menu";
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
