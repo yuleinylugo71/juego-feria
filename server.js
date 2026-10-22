@@ -49,9 +49,14 @@ function save() {
   // guarda solo los últimos 30 días
   const keys = Object.keys(db.days).sort();
   keys.slice(0, Math.max(0, keys.length - 30)).forEach(k => delete db.days[k]);
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(DATA + ".tmp", JSON.stringify(db));
-  fs.renameSync(DATA + ".tmp", DATA);
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(DATA + ".tmp", JSON.stringify(db));
+    fs.renameSync(DATA + ".tmp", DATA);
+  } catch (e) {
+    // si la carpeta no se puede escribir, el juego sigue funcionando (solo no se guardan las estadísticas)
+    if (!save.warned) { console.error("No se pudo guardar", DATA, "-", e.message); save.warned = true; }
+  }
 }
 setInterval(save, 5000);
 for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => { save(); process.exit(0); });
@@ -158,6 +163,8 @@ function send(res, code, body, type = "text/plain; charset=utf-8", extra = {}) {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
+
+  if (p === "/health") return send(res, 200, "ok");
 
   if (p === "/api/hit" && req.method === "POST") {
     let body = "";
