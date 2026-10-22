@@ -264,7 +264,7 @@
         </div>
         <h2 style="color:var(--green);text-shadow:0 0 12px var(--green)">¡ESTÁS ATRAPADO!</h2>
         <p>Un <b style="color:var(--red)">VIRUS</b> te persigue por la sala de servidores.
-           Hackea las <b style="color:var(--green)">4 terminales</b> resolviendo preguntas de lógica
+           Hackea las <b style="color:var(--green)">4 terminales</b> respondiendo preguntas de lógica y tecnología
            y consigue las llaves para abrir la <b style="color:var(--yellow)">PUERTA</b>.</p>
         <p>Tienes <b style="color:var(--yellow)">15 SEGUNDOS</b> por pregunta · Hay <b>3 NIVELES</b><br>
            Si el virus te atrapa, ¡responde bien y escapas!</p>
@@ -448,6 +448,49 @@ const QUESTIONS = [
   { t: "LÓGICA Y", q: "El robot avanza solo si hay luz verde <b>Y</b> el camino está libre. Hay luz verde, pero hay una pared. ¿Avanza?", o: ["No", "Sí", "Avanza rápido", "Salta la pared"], a: 0 },
 ];
 
+// ================== PREGUNTAS DE TECNOLOGÍA (cultura general de computación) ==================
+const TECH_QUESTIONS = [
+  // ---- inteligencia artificial ----
+  { t: "IA", q: "¿Cuál de estos <b>NO</b> es una inteligencia artificial?", o: ["Una calculadora", "ChatGPT", "Gemini", "Copilot"], a: 0 },
+  { t: "IA", q: "¿Cuál de estos <b>SÍ</b> es una inteligencia artificial?", o: ["ChatGPT", "Paint", "Bloc de notas", "Calculadora"], a: 0 },
+  { t: "IA", q: "¿Qué es una inteligencia artificial (IA)?", o: ["Un programa que aprende y responde", "Un robot de cocina", "Un tipo de cable", "Un virus"], a: 0 },
+  { t: "IA", q: "Una inteligencia artificial aprende a partir de...", o: ["Muchos datos", "Comida", "Música fuerte", "Electricidad sola"], a: 0 },
+  // ---- correo electrónico ----
+  { t: "CORREO", q: "¿Para qué sirve un <b>correo electrónico</b>?", o: ["Enviar mensajes y archivos por internet", "Imprimir fotos", "Cargar el celular", "Ver televisión"], a: 0 },
+  { t: "CORREO", q: "¿Qué símbolo lleva <b>siempre</b> un correo electrónico?", o: ["@", "#", "$", "%"], a: 0 },
+  { t: "CORREO", q: "¿Cuál es un correo electrónico <b>válido</b>?", o: ["ana@gmail.com", "ana.gmail.com", "ana#gmail", "www.ana.com"], a: 0 },
+  { t: "CORREO", q: "¿Cuál de estos es un servicio de <b>correo</b>?", o: ["Gmail", "Excel", "Paint", "TikTok"], a: 0 },
+  { t: "CORREO", q: "En un correo, el <b>\"Asunto\"</b> es...", o: ["El tema del mensaje", "La contraseña", "La foto de perfil", "El precio"], a: 0 },
+  // ---- tipos de PC ----
+  { t: "TIPOS DE PC", q: "¿Cuál de estos es un <b>tipo de computadora</b>?", o: ["Laptop", "Licuadora", "Lavadora", "Microondas"], a: 0 },
+  { t: "TIPOS DE PC", q: "Una computadora <b>portátil</b> también se llama...", o: ["Laptop", "Router", "Monitor", "Impresora"], a: 0 },
+  { t: "TIPOS DE PC", q: "Una computadora de <b>escritorio</b> (desktop)...", o: ["Se queda fija en una mesa", "Cabe en el bolsillo", "Funciona sin luz", "Es solo una pantalla"], a: 0 },
+  { t: "TIPOS DE PC", q: "¿Qué computadora cabe en tu <b>bolsillo</b>?", o: ["Un smartphone", "Un servidor", "Una desktop", "Una supercomputadora"], a: 0 },
+  { t: "TIPOS DE PC", q: "Una <b>tablet</b> es...", o: ["Una computadora con pantalla táctil", "Un tipo de teclado", "Una impresora", "Un cable"], a: 0 },
+  { t: "TIPOS DE PC", q: "¿Qué significa <b>PC</b>?", o: ["Computadora Personal", "Pantalla de Color", "Programa Central", "Punto de Conexión"], a: 0 },
+  // ---- teclado y partes ----
+  { t: "TECLADO", q: "¿Cuántas teclas tiene <b>en promedio</b> un teclado de computadora?", o: ["Unas 105", "Unas 20", "Unas 50", "Unas 500"], a: 0 },
+  { t: "TECLADO", q: "¿Qué letra tiene el teclado en <b>español</b> que no tiene el inglés?", o: ["Ñ", "W", "K", "Z"], a: 0 },
+  { t: "TECLADO", q: "¿Cuál es la tecla <b>más larga</b> del teclado?", o: ["La barra espaciadora", "Enter", "Esc", "La letra A"], a: 0 },
+  { t: "TECLADO", q: "¿Qué tecla deja escribir todo en <b>MAYÚSCULAS</b>?", o: ["Bloq Mayús", "Enter", "Espacio", "Esc"], a: 0 },
+  { t: "TECLADO", q: "¿Qué hacen las teclas <code>Ctrl + V</code>?", o: ["Pegar", "Copiar", "Borrar todo", "Apagar"], a: 0 },
+  { t: "TECLADO", q: "¿Qué hacen las teclas <code>Ctrl + Z</code>?", o: ["Deshacer", "Guardar", "Cerrar", "Imprimir"], a: 0 },
+  { t: "PARTES DE LA PC", q: "¿Con qué mueves la flechita en la pantalla?", o: ["Con el mouse", "Con la impresora", "Con el monitor", "Con los parlantes"], a: 0 },
+  { t: "PARTES DE LA PC", q: "¿Dónde ves las imágenes de la computadora?", o: ["En el monitor", "En el teclado", "En el mouse", "En el cable"], a: 0 },
+  { t: "PARTES DE LA PC", q: "¿Qué aparato pasa lo de la pantalla a <b>papel</b>?", o: ["La impresora", "El parlante", "El micrófono", "El router"], a: 0 },
+  { t: "PARTES DE LA PC", q: "¿Para qué sirve una <b>memoria USB</b>?", o: ["Guardar y llevar archivos", "Enfriar la PC", "Tomar fotos", "Dar internet"], a: 0 },
+  { t: "PARTES DE LA PC", q: "¿Qué es más grande?", o: ["1 GB (gigabyte)", "1 MB (megabyte)", "Son iguales", "No se pueden comparar"], a: 0 },
+  // ---- programas e internet ----
+  { t: "PROGRAMAS", q: "¿Qué es <b>Windows</b>?", o: ["Un sistema operativo", "Un navegador", "Una red social", "Un antivirus"], a: 0 },
+  { t: "PROGRAMAS", q: "¿Cuál es un sistema operativo de <b>celular</b>?", o: ["Android", "WhatsApp", "Excel", "Google Maps"], a: 0 },
+  { t: "PROGRAMAS", q: "¿Qué programa se usa para escribir <b>documentos</b>?", o: ["Word", "Paint", "Calculadora", "Spotify"], a: 0 },
+  { t: "PROGRAMAS", q: "¿Para qué sirve <b>Excel</b>?", o: ["Hacer tablas y cálculos", "Editar videos", "Escuchar música", "Llamar por teléfono"], a: 0 },
+  { t: "INTERNET", q: "Guardar tus archivos en \"la <b>nube</b>\" significa guardarlos...", o: ["En internet", "En el cielo", "En una USB", "En papel"], a: 0 },
+  { t: "INTERNET", q: "¿Qué aparato lleva el internet a tu casa?", o: ["El módem / router", "La impresora", "El teclado", "El monitor"], a: 0 },
+  { t: "INTERNET", q: "¿Qué red social es de <b>videos cortos</b>?", o: ["TikTok", "Gmail", "Word", "Excel"], a: 0 },
+  { t: "INTERNET", q: "Para conectarte a un Wi-Fi casi siempre necesitas...", o: ["La contraseña de la red", "Una impresora", "Un cable USB", "Un correo"], a: 0 },
+];
+
 // ================== PREGUNTAS AL AZAR (RANDOM) ==================
 // Cada vez que se usan crean una pregunta nueva con números al azar, así nunca se repiten.
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));   // entero entre a y b
@@ -511,7 +554,7 @@ const cv = document.getElementById("c"), ctx = cv.getContext("2d");
 const $ = id => document.getElementById(id);
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 let level, walls, dots, totalDots, terminals, exitPos, startP, startM, player, viruses, wallCanvas, leds;
-let keys, lives, score, state = "menu", qPool = [], toastTimer, lastT, pAcc = 0, best = 0;
+let keys, lives, score, state = "menu", toastTimer, lastT, pAcc = 0, best = 0;
 
 try { best = +localStorage.getItem("esr_best") || 0; } catch (e) {}
 
@@ -889,15 +932,18 @@ function levelComplete() {
 
 // ================== PREGUNTAS ==================
 let qCurrent, qTimer, qStart, qDone, qCallback, qLastSec;
-// mitad de las veces sale una pregunta de la lista (sin repetir hasta agotarla),
-// la otra mitad una pregunta nueva generada al azar
+// 40% tecnología, 30% lógica de la lista, 30% generadas al azar.
+// Las de las listas no se repiten hasta que se agota cada lista.
+const pools = { tech: [], logic: [] };
+function fromPool(name, list) {
+  if (!pools[name].length) pools[name] = shuffle([...list]);
+  return pools[name].pop();
+}
 function nextQuestion() {
-  let q;
-  if (Math.random() < 0.5) q = pick(GENERATORS)();
-  else {
-    if (!qPool.length) qPool = shuffle([...QUESTIONS]);
-    q = qPool.pop();
-  }
+  const r = Math.random();
+  const q = r < 0.4 ? fromPool("tech", TECH_QUESTIONS)
+          : r < 0.7 ? fromPool("logic", QUESTIONS)
+          : pick(GENERATORS)();
   return { ...q, opts: shuffle(q.o.map((txt, i) => ({ txt, ok: i === q.a }))) };
 }
 
