@@ -558,6 +558,28 @@ let keys, lives, score, state = "menu", toastTimer, lastT, pAcc = 0, best = 0;
 
 try { best = +localStorage.getItem("esr_best") || 0; } catch (e) {}
 
+// ================== MONITOREO (anónimo) ==================
+// Avisa al servidor del VPS cuántos se conectan y cómo les va. Solo un código al azar por visita,
+// ningún dato personal. No hace nada si se abre el archivo directo o desde GitHub Pages.
+const TRACK = location.protocol.startsWith("http") && !/github\.io$/.test(location.hostname);
+const SID = (() => {
+  const make = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  try { let s = sessionStorage.getItem("esr_sid"); if (!s) { s = make(); sessionStorage.setItem("esr_sid", s); } return s; }
+  catch (e) { return make(); }
+})();
+const DEVICE = matchMedia("(pointer: coarse)").matches ? "movil" : "pc";
+function track(ev, data = {}) {
+  if (!TRACK) return;
+  try {
+    const body = JSON.stringify({ sid: SID, ev, dev: DEVICE, ...data });
+    if (navigator.sendBeacon) navigator.sendBeacon("api/hit", new Blob([body], { type: "application/json" }));
+    else fetch("api/hit", { method: "POST", body, headers: { "Content-Type": "application/json" }, keepalive: true }).catch(() => {});
+  } catch (e) {}
+}
+track("visit");
+setInterval(() => { if (!document.hidden) track("ping", { playing: state === "play" || state === "question" || state === "levelDone" }); }, 20000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) track("ping", { playing: state === "play" }); });
+
 // ================== SONIDO ==================
 let actx, master, musicBus, muted = false;
 try { muted = localStorage.getItem("esr_muted") === "1"; } catch (e) {}
@@ -781,6 +803,7 @@ function startGame() {
   loadLevel(0);
   show("ovMenu", false); show("ovEnd", false); show("ovLevel", false);
   musicStart();
+  track("start");
   state = "play"; toast("NIVEL 1 · " + LEVELS[0].name + " · ¡Busca las terminales!");
 }
 
@@ -918,6 +941,7 @@ function levelComplete() {
   sfx.win();
   score += 300 + (dots.size === 0 ? 300 : 0);
   if (level >= LEVELS.length - 1) return endGame(true);
+  track("level", { level: level + 1 });
   const bonusLife = lives < 3;
   lives = Math.min(3, lives + 1);
   updateHud();
@@ -980,6 +1004,7 @@ function answer(i) {
   $("feedback").textContent = i < 0 ? "⏰ ¡SE ACABÓ EL TIEMPO!" : ok ? "✅ ¡CORRECTO!" : "❌ INCORRECTO";
   $("feedback").style.color = ok ? "var(--green)" : "var(--red)";
   ok ? sfx.ok() : sfx.bad();
+  track("q", { ok });
   setTimeout(() => { show("ovQ", false); musicDuck(false); qCallback(ok); }, 1300);
 }
 
@@ -989,6 +1014,7 @@ function endGame(win) {
   if (win) sfx.win();
   else [392, 330, 262, 196].forEach((f, i) => beep(f, 0.25, "triangle", 0.08, i * 0.18));
   if (win) score += lives * 200;
+  track("end", { win, score, level: level + 1 });
   const record = score > best;
   if (record) { best = score; try { localStorage.setItem("esr_best", best); } catch (e) {} }
   updateHud();

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoreo · Escape the Server Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020611; --panel: #061229; --cyan: #2fa8ff; --cyan-l: #7fd6ff; --green: #39ff88;
+    --yellow: #ffd23f; --red: #ff2a45; --pink: #ff3b6b; --text: #cfefff; --muted: #7d9bb8; --dim: #4a6a8a; --grid: #13294a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(ellipse at top, #0a1d3d 0%, var(--bg) 70%) fixed; color: var(--text);
+    font-family: "Share Tech Mono", Consolas, monospace; min-height: 100vh; padding: 16px;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; display: grid; gap: 14px; }
+  .pw { filter: drop-shadow(0 0 6px rgba(47,168,255,.55)); min-width: 0; }
+  .panel {
+    --cut: 14px; background: var(--cyan); padding: 2px; height: 100%;
+    clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  }
+  .in {
+    background: linear-gradient(180deg, #0a1a38, var(--panel)); height: 100%; padding: 16px 20px;
+    clip-path: polygon(calc(var(--cut) - 1px) 0, 100% 0, 100% calc(100% - var(--cut) + 1px), calc(100% - var(--cut) + 1px) 100%, 0 100%, 0 calc(var(--cut) - 1px));
+  }
+  h1, h2, .lbl, .big, .val { font-family: Orbitron, sans-serif; }
+  .lbl { font-size: 12px; letter-spacing: 1.5px; color: var(--cyan-l); text-transform: uppercase; }
+  h2 { font-size: 14px; letter-spacing: 2px; color: var(--cyan-l); margin-bottom: 12px; }
+
+  /* encabezado */
+  .head .in { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .head h1 { font-size: clamp(18px, 3vw, 28px); color: var(--green); text-shadow: 0 0 10px var(--green); letter-spacing: 1px; }
+  .head .sub { font-size: 13px; color: var(--muted); letter-spacing: 2px; font-family: Orbitron; }
+  .live { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 1.6s infinite; }
+  .live.off .dot { background: var(--red); box-shadow: 0 0 10px var(--red); animation: none; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* conectados ahora */
+  .hero .in { display: grid; grid-template-columns: auto 1fr; gap: 10px 28px; align-items: center; }
+  .big { font-size: clamp(64px, 11vw, 120px); font-weight: 900; line-height: 1; color: var(--green); text-shadow: 0 0 18px rgba(57,255,136,.7); }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { border: 1.5px solid var(--cyan); padding: 8px 14px; font-size: 16px; background: #0b1a33;
+    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+  .chip b { font-family: Orbitron; color: #fff; font-size: 20px; margin-left: 6px; }
+
+  /* tarjetas */
+  .tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+  .tile .in { display: flex; flex-direction: column; gap: 6px; min-height: 104px; justify-content: center; }
+  .val { font-size: clamp(22px, 2.6vw, 32px); font-weight: 700; color: #fff; }
+  .val.y { color: var(--yellow); text-shadow: 0 0 10px rgba(255,210,63,.6); }
+  .tile .hint { font-size: 13px; color: var(--muted); }
+
+  /* gráfica */
+  .chart { position: relative; }
+  .chart svg { width: 100%; height: 230px; display: block; overflow: visible; }
+  .chart .axis { fill: var(--muted); font-size: 11px; font-family: "Share Tech Mono", monospace; }
+  .chart .bar { fill: var(--cyan); }
+  .chart .bar.now { fill: var(--yellow); }
+  .chart .hit { fill: transparent; cursor: default; }
+  #tip { position: absolute; pointer-events: none; background: #0b1a33; border: 1.5px solid var(--cyan); padding: 6px 10px;
+    font-size: 13px; color: var(--text); white-space: nowrap; transform: translate(-50%, -110%); display: none; z-index: 2; }
+  #tip b { color: #fff; font-family: Orbitron; }
+  details { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  details summary { cursor: pointer; }
+  details table { margin-top: 8px; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th { font-family: Orbitron; font-size: 11px; letter-spacing: 1px; color: var(--cyan-l); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+  td { padding: 7px 8px; border-bottom: 1px solid #0d1d38; }
+  td.num { font-family: Orbitron; color: #fff; text-align: right; }
+  .win { color: var(--green); } .lose { color: var(--red); }
+  .feed { list-style: none; display: grid; gap: 6px; max-height: 340px; overflow-y: auto; }
+  .feed li { display: flex; gap: 10px; font-size: 15px; padding: 6px 8px; background: #0a1730; border-left: 3px solid var(--cyan); }
+  .feed time { color: var(--muted); flex: none; }
+  .empty { color: var(--dim); font-size: 14px; padding: 10px 0; }
+  #err { display: none; background: #3a0a12; border: 1.5px solid var(--red); color: #ffb3bf; padding: 10px 14px; }
+
+  @media (max-width: 1000px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 700px) {
+    body { padding: 10px; }
+    .tiles { grid-template-columns: repeat(2, 1fr); }
+    .cols { grid-template-columns: 1fr; }
+    .hero .in { grid-template-columns: 1fr; text-align: center; }
+    .chips { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="pw head"><div class="panel"><div class="in">
+    <div><h1>PANEL DE MONITOREO</h1><div class="sub">ESCAPE THE SERVER ROOM</div></div>
+    <div class="live" id="live"><span class="dot"></span><span id="liveTxt">Conectando…</span></div>
+  </div></div></div>
+
+  <div id="err">No se pudo leer el servidor. Reintentando…</div>
+
+  <div class="pw hero"><div class="panel" style="--cut:22px"><div class="in">
+    <div>
+      <div class="lbl">Conectados ahora</div>
+      <div class="big" id="online">–</div>
+    </div>
+    <div class="chips">
+      <div class="chip">🎮 Jugando<b id="playing">–</b></div>
+      <div class="chip">📱 Celular<b id="movil">–</b></div>
+      <div class="chip">💻 PC<b id="pc">–</b></div>
+    </div>
+  </div></div></div>
+
+  <div class="tiles">
+    <div class="pw tile"><div class="panel"><div class="in"><div class="lbl">Visitantes hoy</div><div class="val y" id="tVisitors">–</div><div class="hint" id="tVisitorsAll"></div></div></div></div>
+    <div class="pw tile"><div class="panel"><div class="in"><div class="lbl">Partidas hoy</div><div class="val" id="tStarts">–</div><div class="hint" id="tStartsAll"></div></div></div></div>
+    <div class="pw tile"><div class="panel"><div class="in"><div class="lbl">Escaparon hoy</div><div class="val" id="tWins">–</div><div class="hint" id="tLosses"></div></div></div></div>
+    <div class="pw tile"><div class="panel"><div class="in"><div class="lbl">Aciertos hoy</div><div class="val" id="tAcc">–</div><div class="hint" id="tAnswers"></div></div></div></div>
+    <div class="pw tile"><div class="panel"><div class="in"><div class="lbl">Puntaje promedio</div><div class="val" id="tAvg">–</div><div class="hint">todas las partidas</div></div></div></div>
+    <div class="pw tile"><div class="panel"><div class="in"><div class="lbl">Récord</div><div class="val y" id="tBest">–</div><div class="hint" id="tBestHint"></div></div></div></div>
+  </div>
+
+  <div class="pw"><div class="panel"><div class="in chart">
+    <h2>VISITANTES POR HORA · HOY</h2>
+    <svg id="chart" role="img" aria-label="Visitantes por hora de hoy"></svg>
+    <div id="tip"></div>
+    <details><summary>Ver como tabla</summary><table id="hoursTable"></table></details>
+  </div></div></div>
+
+  <div class="cols">
+    <div class="pw"><div class="panel"><div class="in">
+      <h2>🏆 MEJORES PUNTAJES</h2>
+      <table><thead><tr><th>#</th><th>Resultado</th><th>Dispositivo · hora</th><th style="text-align:right">Puntos</th></tr></thead><tbody id="top"></tbody></table>
+    </div></div></div>
+    <div class="pw"><div class="panel"><div class="in">
+      <h2>ACTIVIDAD RECIENTE</h2>
+      <ul class="feed" id="feed"></ul>
+    </div></div></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = n => n == null ? "–" : n.toLocaleString("es");
+const hhmm = t => new Date(t).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+const devIcon = d => d === "movil" ? "📱" : "💻";
+
+function drawChart(hours) {
+  const svg = $("chart"), W = svg.clientWidth || 800, H = 230, L = 34, B = 24, T = 10;
+  const max = Math.max(4, ...hours), step = Math.ceil(max / 4), top = step * 4;
+  const cw = (W - L) / 24, bw = Math.max(4, cw - 6), nowH = new Date().getHours();
+  const y = v => T + (H - T - B) * (1 - v / top);
+  let s = "";
+  for (let i = 0; i <= 4; i++) {
+    const v = step * i, yy = y(v);
+    s += `<line x1="${L}" x2="${W}" y1="${yy}" y2="${yy}" stroke="${i ? "#13294a" : "#2a4a78"}" stroke-width="1"/>`;
+    s += `<text class="axis" x="${L - 6}" y="${yy + 4}" text-anchor="end">${v}</text>`;
+  }
+  hours.forEach((v, h) => {
+    const x = L + h * cw + (cw - bw) / 2, yy = y(v), hgt = (H - B) - yy;
+    s += `<rect class="hit" data-h="${h}" data-v="${v}" x="${L + h * cw}" y="${T}" width="${cw}" height="${H - T - B}"/>`;
+    if (v > 0) s += `<path class="bar${h === nowH ? " now" : ""}" d="M${x} ${H - B}V${yy + 4}q0 -4 4 -4h${bw - 8}q4 0 4 4V${H - B}z"/>`;
+    if (h % 3 === 0) s += `<text class="axis" x="${L + h * cw + cw / 2}" y="${H - 6}" text-anchor="middle">${String(h).padStart(2, "0")}h</text>`;
+  });
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+  svg.querySelectorAll(".hit").forEach(r => {
+    r.addEventListener("mousemove", e => {
+      const h = +r.dataset.h, box = svg.parentElement.getBoundingClientRect();
+      $("tip").innerHTML = `${String(h).padStart(2, "0")}:00 – ${String(h + 1).padStart(2, "0")}:00 · <b>${r.dataset.v}</b> visitante${r.dataset.v === "1" ? "" : "s"}`;
+      $("tip").style.left = (e.clientX - box.left) + "px"; $("tip").style.top = (e.clientY - box.top) + "px"; $("tip").style.display = "block";
+    });
+    r.addEventListener("mouseleave", () => $("tip").style.display = "none");
+  });
+  $("hoursTable").innerHTML = "<tr><th>Hora</th><th>Visitantes</th></tr>" +
+    hours.map((v, h) => `<tr><td>${String(h).padStart(2, "0")}:00</td><td class="num">${v}</td></tr>`).join("");
+}
+
+let lastHours = Array(24).fill(0);
+function render(d) {
+  $("online").textContent = fmt(d.online);
+  $("playing").textContent = fmt(d.playing);
+  $("movil").textContent = fmt(d.movil);
+  $("pc").textContent = fmt(d.pc);
+  $("tVisitors").textContent = fmt(d.today.visitors);
+  $("tVisitorsAll").textContent = `${fmt(d.total.visitors)} en total`;
+  $("tStarts").textContent = fmt(d.today.starts);
+  $("tStartsAll").textContent = `${fmt(d.total.starts)} en total`;
+  $("tWins").textContent = fmt(d.today.wins);
+  $("tLosses").textContent = `${fmt(d.today.losses)} perdieron`;
+  $("tAcc").textContent = d.today.accuracy == null ? "–" : d.today.accuracy + "%";
+  $("tAnswers").textContent = `${fmt(d.today.answers)} respuestas`;
+  $("tAvg").textContent = fmt(d.total.avgScore);
+  $("tBest").textContent = d.top.length ? fmt(d.top[0].score) : "–";
+  $("tBestHint").textContent = d.top.length ? `${d.top[0].win ? "escapó" : "nivel " + d.top[0].level} · ${hhmm(d.top[0].t)}` : "aún no hay partidas";
+
+  $("top").innerHTML = d.top.length ? d.top.map((r, i) =>
+    `<tr><td>${i + 1}</td><td class="${r.win ? "win" : "lose"}">${r.win ? "✓ Escapó" : "✗ Nivel " + r.level}</td><td>${devIcon(r.dev)} ${hhmm(r.t)}</td><td class="num">${fmt(r.score)}</td></tr>`).join("")
+    : `<tr><td colspan="4" class="empty">Aún no hay partidas terminadas.</td></tr>`;
+
+  $("feed").innerHTML = d.feed.length ? d.feed.map(f => `<li><time>${hhmm(f.t)}</time><span>${devIcon(f.dev)} ${f.text}</span></li>`).join("")
+    : `<li class="empty" style="border:0;background:none">Esperando jugadores…</li>`;
+
+  lastHours = d.today.hours;
+  drawChart(lastHours);
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("api/stats", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    render(await r.json());
+    $("err").style.display = "none";
+    $("live").classList.remove("off");
+    $("liveTxt").textContent = "EN VIVO · " + new Date().toLocaleTimeString("es");
+  } catch (e) {
+    $("err").style.display = "block";
+    $("live").classList.add("off");
+    $("liveTxt").textContent = "Sin conexión";
+  }
+}
+refresh();
+setInterval(refresh, 3000);
+addEventListener("resize", () => drawChart(lastHours));
+</script>
+</body>
+</html>
