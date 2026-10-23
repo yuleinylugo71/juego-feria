@@ -2,7 +2,7 @@
 FROM node:20-alpine
 
 WORKDIR /app
-COPY server.js index.html monitor.html ./
+COPY server.js index.html monitor.html preguntas-base.js ./
 COPY qr/*.png ./qr/
 
 # carpeta donde se guardan las estadísticas (montar un volumen aquí para no perderlas)

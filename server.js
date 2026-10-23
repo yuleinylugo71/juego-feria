@@ -28,6 +28,69 @@ try { db = { ...db, ...JSON.parse(fs.readFileSync(DATA, "utf8")) }; } catch (e) 
 const allSids = new Set(db.sids);
 let dirty = false;
 
+// ---------------- preguntas (se manejan desde /monitor) ----------------
+// Banco base: preguntas-base.js (el mismo archivo que carga el juego).
+const vm = require("vm");
+const base = (() => {
+  const ctx = { window: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(ROOT, "preguntas-base.js"), "utf8"), ctx);
+  const qid = q => "b" + crypto.createHash("sha1").update(q.q).digest("hex").slice(0, 10);
+  return [
+    ...ctx.window.PREGUNTAS_BASE.logica.map(q => ({ ...q, cat: "logica", id: qid(q) })),
+    ...ctx.window.PREGUNTAS_BASE.tecnologia.map(q => ({ ...q, cat: "tecnologia", id: qid(q) })),
+  ];
+})();
+const QDATA = path.join(DATA_DIR, "questions.json");
+let qs = { disabled: [], custom: [], generators: true, version: 0 };
+try { qs = { ...qs, ...JSON.parse(fs.readFileSync(QDATA, "utf8")) }; } catch (e) { /* primera vez */ }
+function saveQs() {
+  qs.version++;
+  try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(QDATA + ".tmp", JSON.stringify(qs, null, 1)); fs.renameSync(QDATA + ".tmp", QDATA); }
+  catch (e) { console.error("No se pudo guardar", QDATA, "-", e.message); }
+}
+const allQuestions = () => [...base.map(q => ({ ...q, builtin: true })), ...qs.custom.map(q => ({ ...q, builtin: false, plain: true }))];
+const stripTags = s => String(s).replace(/<[^>]*>/g, "");
+
+// lo que recibe el juego: solo las activas
+function activeQuestions() {
+  const off = new Set(qs.disabled);
+  return { version: qs.version, generators: qs.generators,
+    questions: allQuestions().filter(q => !off.has(q.id)).map(({ t, q, o, a, cat, plain }) => ({ t, q, o, a, cat, plain: !!plain })) };
+}
+// lo que ve el panel: todas, con su estado
+function adminQuestions() {
+  const off = new Set(qs.disabled);
+  return { generators: qs.generators,
+    items: allQuestions().map(q => ({ id: q.id, cat: q.cat, t: q.t, q: q.plain ? q.q : stripTags(q.q), o: q.o.map(x => q.plain ? x : stripTags(x)), builtin: q.builtin, active: !off.has(q.id) })) };
+}
+
+function adminAction(p, b) {
+  const clean = (s, max) => String(s == null ? "" : s).replace(/\s+/g, " ").trim().slice(0, max);
+  if (p === "/api/admin/questions/add") {
+    const cat = b.cat === "logica" ? "logica" : "tecnologia";
+    const q = clean(b.q, 220), o = (Array.isArray(b.o) ? b.o : []).map(x => clean(x, 90));
+    const t = clean(b.t, 24).toUpperCase() || (cat === "logica" ? "LÓGICA" : "TECNOLOGÍA");
+    if (!q) return [400, "Escribe la pregunta."];
+    if (o.length !== 4 || o.some(x => !x)) return [400, "Escribe la respuesta correcta y las 3 incorrectas."];
+    if (new Set(o.map(x => x.toLowerCase())).size !== 4) return [400, "Las 4 respuestas deben ser distintas."];
+    if (qs.custom.length >= 500) return [400, "Ya hay demasiadas preguntas agregadas (máximo 500)."];
+    qs.custom.push({ id: "c" + crypto.randomBytes(5).toString("hex"), cat, t, q, o, a: 0 });
+  } else if (p === "/api/admin/questions/toggle") {
+    if (!allQuestions().some(q => q.id === b.id)) return [404, "No existe esa pregunta."];
+    qs.disabled = qs.disabled.filter(id => id !== b.id);
+    if (!b.active) qs.disabled.push(b.id);
+  } else if (p === "/api/admin/questions/delete") {
+    const before = qs.custom.length;
+    qs.custom = qs.custom.filter(q => q.id !== b.id);
+    if (qs.custom.length === before) return [404, "Solo se pueden borrar las preguntas agregadas desde el panel."];
+    qs.disabled = qs.disabled.filter(id => id !== b.id);
+  } else if (p === "/api/admin/generators") {
+    qs.generators = !!b.on;
+  } else return [404, "No encontrado"];
+  saveQs();
+  return [200, JSON.stringify(adminQuestions())];
+}
+
 const sessions = new Map();       // sid -> { last, dev, playing }
 const feed = [];                  // actividad reciente
 
@@ -151,6 +214,7 @@ function authorized(req) {
 const FILES = {
   "/": ["index.html", "text/html; charset=utf-8"],
   "/index.html": ["index.html", "text/html; charset=utf-8"],
+  "/preguntas-base.js": ["preguntas-base.js", "text/javascript; charset=utf-8"],
   "/qr/cartel-qr-juego-feria.png": ["qr/cartel-qr-juego-feria.png", "image/png"],
   "/qr/qr-juego-feria.png": ["qr/qr-juego-feria.png", "image/png"],
 };
@@ -173,10 +237,26 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (p === "/monitor" || p === "/api/stats") {
+  if (p === "/api/questions" && req.method === "GET")
+    return send(res, 200, JSON.stringify(activeQuestions()), "application/json; charset=utf-8");
+
+  if (p === "/monitor" || p === "/api/stats" || p.startsWith("/api/admin/")) {
     if (!PASS && !OPEN) return send(res, 503, "Monitoreo desactivado: define la variable MONITOR_PASS en el servidor.");
     if (!authorized(req)) return send(res, 401, "Se necesita usuario y contraseña", undefined, { "WWW-Authenticate": 'Basic realm="Monitoreo del juego", charset="UTF-8"' });
     if (p === "/api/stats") return send(res, 200, JSON.stringify(stats()), "application/json; charset=utf-8");
+    if (p === "/api/admin/questions" && req.method === "GET") return send(res, 200, JSON.stringify(adminQuestions()), "application/json; charset=utf-8");
+    if (p.startsWith("/api/admin/")) {
+      // solo JSON por POST (un formulario de otra página no puede mandar esto: protege contra CSRF)
+      if (req.method !== "POST" || !/^application\/json\b/.test(req.headers["content-type"] || "")) return send(res, 405, "Usa POST con JSON");
+      let body = "";
+      req.on("data", c => { body += c; if (body.length > 8192) req.destroy(); });
+      req.on("end", () => {
+        let b; try { b = JSON.parse(body); } catch (e) { return send(res, 400, "JSON inválido"); }
+        const [code, out] = adminAction(p, b);
+        send(res, code, out, code === 200 ? "application/json; charset=utf-8" : undefined);
+      });
+      return;
+    }
     return fs.readFile(path.join(ROOT, "monitor.html"), (e, d) => e ? send(res, 500, "Falta monitor.html") : send(res, 200, d, "text/html; charset=utf-8"));
   }
 

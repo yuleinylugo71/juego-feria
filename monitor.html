@@ -80,6 +80,43 @@
   .empty { color: var(--dim); font-size: 14px; padding: 10px 0; }
   #err { display: none; background: #3a0a12; border: 1.5px solid var(--red); color: #ffb3bf; padding: 10px 14px; }
 
+  /* ---------- administrar preguntas ---------- */
+  .qhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .qsum { color: var(--muted); font-size: 14px; }
+  .qsum b { color: #fff; font-family: Orbitron; }
+  .gen { display: flex; align-items: center; gap: 10px; margin: 6px 0 14px; font-size: 15px; cursor: pointer; }
+  .gen input, .qrow input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--green); cursor: pointer; flex: none; }
+  .gen small { color: var(--muted); }
+  .addq { border: 1.5px dashed var(--cyan); padding: 12px 14px; margin-bottom: 14px; color: var(--text); font-size: 15px; }
+  .addq summary { font-family: Orbitron; font-size: 13px; letter-spacing: 1px; color: var(--yellow); cursor: pointer; }
+  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 12px; }
+  .form label { display: grid; gap: 4px; font-size: 13px; color: var(--cyan-l); }
+  .form .full { grid-column: 1 / -1; }
+  .form input, .form select, .form textarea, .filters input, .filters select {
+    background: #0b1a33; color: #fff; border: 1.5px solid #1d3d66; padding: 9px 10px; font: 15px "Share Tech Mono", monospace; width: 100%;
+  }
+  .form textarea { resize: vertical; min-height: 54px; }
+  .form input:focus, .form textarea:focus, .form select:focus, .filters input:focus { outline: none; border-color: var(--cyan); }
+  .form .ok input { border-color: var(--green); }
+  .form .bad input { border-color: #7a2a35; }
+  .btn { font-family: Orbitron; font-weight: 700; font-size: 13px; letter-spacing: 1px; border: none; cursor: pointer; padding: 11px 18px;
+    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+  .btn.go { background: var(--green); color: #02130a; }
+  .btn.del { background: transparent; color: #ff8fa0; border: 1.5px solid #7a2a35; clip-path: none; padding: 6px 10px; font-size: 11px; }
+  .btn.del:hover { background: #3a0a12; }
+  #formMsg { font-size: 14px; align-self: center; }
+  .filters { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .filters input { flex: 1 1 220px; width: auto; }
+  .filters select { width: auto; }
+  .qlist { display: grid; gap: 6px; max-height: 560px; overflow-y: auto; padding-right: 4px; }
+  .qrow { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; padding: 10px 12px; background: #0a1730; border-left: 3px solid var(--cyan); }
+  .qrow.off { opacity: .45; border-left-color: var(--dim); }
+  .qrow .qt { font-size: 15px; color: #fff; }
+  .qrow .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; font-size: 11px; font-family: Orbitron; letter-spacing: 1px; }
+  .tag { color: var(--cyan-l); } .tag.new { color: var(--yellow); }
+  .ans { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .ans .right { color: var(--green); }
+
   @media (max-width: 1000px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
   @media (max-width: 700px) {
     body { padding: 10px; }
@@ -87,6 +124,7 @@
     .cols { grid-template-columns: 1fr; }
     .hero .in { grid-template-columns: 1fr; text-align: center; }
     .chips { justify-content: center; }
+    .form { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -137,6 +175,47 @@
       <ul class="feed" id="feed"></ul>
     </div></div></div>
   </div>
+
+  <!-- ===== PREGUNTAS ===== -->
+  <div class="pw"><div class="panel"><div class="in">
+    <div class="qhead"><h2>❓ PREGUNTAS DEL JUEGO</h2><div class="qsum" id="qSum">Cargando…</div></div>
+    <p class="qsum" style="margin-bottom:6px">Los cambios se aplican en la <b style="font-family:inherit">siguiente partida</b> de cada jugador, sin recargar la página.</p>
+
+    <label class="gen"><input type="checkbox" id="genToggle">
+      <span>Preguntas al azar <small>(series de números, días, relojes, palabras al revés… se inventan solas con números distintos)</small></span></label>
+
+    <details class="addq" id="addBox">
+      <summary>➕ AGREGAR PREGUNTA NUEVA</summary>
+      <form class="form" id="addForm" autocomplete="off">
+        <label>Tipo
+          <select id="fCat"><option value="tecnologia">Tecnología</option><option value="logica">Lógica</option></select></label>
+        <label>Etiqueta (opcional)
+          <input id="fTag" maxlength="24" placeholder="ej. REDES, SEGURIDAD, ACERTIJO"></label>
+        <label class="full">Pregunta
+          <textarea id="fQ" maxlength="220" placeholder="ej. ¿Para qué sirve un antivirus?" required></textarea></label>
+        <label class="full ok">✓ Respuesta correcta
+          <input id="fA0" maxlength="90" placeholder="ej. Proteger la computadora de virus" required></label>
+        <label class="bad">✗ Incorrecta 1 <input id="fA1" maxlength="90" required></label>
+        <label class="bad">✗ Incorrecta 2 <input id="fA2" maxlength="90" required></label>
+        <label class="bad">✗ Incorrecta 3 <input id="fA3" maxlength="90" required></label>
+        <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap">
+          <button class="btn go" type="submit">AGREGAR</button><span id="formMsg"></span></div>
+      </form>
+      <p class="qsum" style="margin-top:8px">En el juego las respuestas salen mezcladas, así que no importa el orden.</p>
+    </details>
+
+    <div class="filters">
+      <input id="fSearch" type="search" placeholder="Buscar pregunta o respuesta…">
+      <select id="fShow">
+        <option value="all">Todas</option>
+        <option value="tecnologia">Tecnología</option>
+        <option value="logica">Lógica</option>
+        <option value="custom">Agregadas por mí</option>
+        <option value="off">Desactivadas</option>
+      </select>
+    </div>
+    <div class="qlist" id="qList"></div>
+  </div></div></div>
 </div>
 
 <script>
@@ -219,6 +298,78 @@ async function refresh() {
     $("liveTxt").textContent = "Sin conexión";
   }
 }
+// ================== administrar preguntas ==================
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+let Q = { generators: true, items: [] };
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" });
+  const txt = await r.text();
+  if (!r.ok) throw new Error(txt || ("Error " + r.status));
+  return JSON.parse(txt);
+}
+
+function renderQ() {
+  const act = Q.items.filter(q => q.active);
+  $("qSum").innerHTML = `<b>${act.length}</b> activas de ${Q.items.length} · tecnología <b>${act.filter(q => q.cat === "tecnologia").length}</b> · lógica <b>${act.filter(q => q.cat === "logica").length}</b> · agregadas <b>${Q.items.filter(q => !q.builtin).length}</b>`;
+  $("genToggle").checked = Q.generators;
+  const s = $("fSearch").value.trim().toLowerCase(), f = $("fShow").value;
+  const list = Q.items.filter(q =>
+    (f === "all" || q.cat === f || (f === "custom" && !q.builtin) || (f === "off" && !q.active)) &&
+    (!s || (q.q + " " + q.o.join(" ") + " " + q.t).toLowerCase().includes(s)))
+    // las agregadas primero (las más nuevas arriba)
+    .sort((a, b) => (a.builtin - b.builtin) || (a.builtin ? 0 : Q.items.indexOf(b) - Q.items.indexOf(a)));
+  $("qList").innerHTML = list.length ? list.map(q => `
+    <div class="qrow${q.active ? "" : " off"}">
+      <input type="checkbox" data-id="${q.id}" ${q.active ? "checked" : ""} title="${q.active ? "Activa: sale en el juego" : "Desactivada: no sale en el juego"}" aria-label="Activar o desactivar">
+      <div>
+        <div class="meta"><span class="tag">${q.cat === "logica" ? "LÓGICA" : "TECNOLOGÍA"} · ${esc(q.t)}</span>${q.builtin ? "" : '<span class="tag new">★ AGREGADA</span>'}${q.active ? "" : '<span class="tag" style="color:var(--dim)">DESACTIVADA</span>'}</div>
+        <div class="qt">${esc(q.q)}</div>
+        <div class="ans"><span class="right">✓ ${esc(q.o[0])}</span> · ✗ ${q.o.slice(1).map(esc).join(" · ✗ ")}</div>
+      </div>
+      ${q.builtin ? "<span></span>" : `<button class="btn del" data-del="${q.id}">BORRAR</button>`}
+    </div>`).join("") : `<div class="empty">No hay preguntas con ese filtro.</div>`;
+}
+
+async function loadQ() {
+  try { Q = await api("api/admin/questions"); renderQ(); }
+  catch (e) { $("qSum").textContent = "No se pudieron cargar las preguntas."; }
+}
+
+$("qList").addEventListener("change", async e => {
+  const id = e.target.dataset.id; if (!id) return;
+  try { Q = await api("api/admin/questions/toggle", { id, active: e.target.checked }); renderQ(); }
+  catch (err) { alert(err.message); loadQ(); }
+});
+$("qList").addEventListener("click", async e => {
+  const id = e.target.dataset.del; if (!id) return;
+  const q = Q.items.find(x => x.id === id);
+  if (!confirm(`¿Borrar para siempre esta pregunta?\n\n"${q ? q.q : ""}"\n\n(Si solo quieres que no salga por ahora, mejor desmarca la casilla.)`)) return;
+  try { Q = await api("api/admin/questions/delete", { id }); renderQ(); }
+  catch (err) { alert(err.message); }
+});
+$("genToggle").addEventListener("change", async e => {
+  try { Q = await api("api/admin/generators", { on: e.target.checked }); renderQ(); }
+  catch (err) { alert(err.message); loadQ(); }
+});
+$("fSearch").addEventListener("input", renderQ);
+$("fShow").addEventListener("change", renderQ);
+
+$("addForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const body = { cat: $("fCat").value, t: $("fTag").value, q: $("fQ").value, o: ["fA0", "fA1", "fA2", "fA3"].map(id => $(id).value) };
+  const msg = $("formMsg");
+  try {
+    Q = await api("api/admin/questions/add", body);
+    ["fQ", "fA0", "fA1", "fA2", "fA3"].forEach(id => $(id).value = "");
+    msg.style.color = "var(--green)"; msg.textContent = "✓ ¡Agregada! Ya sale en el juego.";
+    $("fShow").value = "custom"; $("fSearch").value = ""; renderQ();
+    $("fQ").focus();
+  } catch (err) { msg.style.color = "var(--red)"; msg.textContent = "✗ " + err.message; }
+  setTimeout(() => msg.textContent = "", 5000);
+});
+
+loadQ();
 refresh();
 setInterval(refresh, 3000);
 addEventListener("resize", () => drawChart(lastHours));

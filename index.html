@@ -105,6 +105,8 @@
     box-shadow: 0 0 14px rgba(255,210,63,.5); opacity: 0; transition: opacity .3s;
   }
   #toast.show { opacity: 1; }
+  /* si el robot está en la mitad de abajo, la alerta sale arriba para no tapar el camino */
+  #toast.top { bottom: auto; top: 22px; }
 
   /* ---------- barra inferior ---------- */
   .foot { display: grid; grid-template-columns: 100px 1.7fr 1.2fr 1.3fr; gap: 10px; }
@@ -177,6 +179,7 @@
     #qOpts { grid-template-columns: 1fr; }
     .opt { font-size: 16px; padding: 14px 12px; }
     #toast { font-size: 12px; white-space: normal; text-align: center; bottom: 8px; width: 92%; padding: 6px 10px; }
+    #toast.top { bottom: auto; top: 8px; }
     #pad { grid-template-columns: repeat(3, 76px); grid-template-rows: repeat(2, 76px); gap: 8px; margin-top: 6px; }
     #pad button { font-size: 30px; }
   }
@@ -317,6 +320,7 @@
 <button id="btnMute" aria-label="Activar o quitar sonido">🔊</button>
 <div id="rotate"><div>📱↻</div><p>Gira tu celular a <b>vertical</b> para jugar</p></div>
 
+<script src="preguntas-base.js"></script>
 <script>
 // ================== NIVELES ==================
 // # pared · . dato · P jugador · M virus · T terminal · E salida
@@ -378,118 +382,12 @@ const TIME_LIMIT = 15;      // segundos para responder
 const KEYS_NEEDED = 4;
 const PLAYER_STEP = 0.14;   // segundos por casilla del jugador
 
-// ================== PREGUNTAS (lógica) ==================
-// a = índice de la respuesta correcta (las opciones se mezclan solas)
-const QUESTIONS = [
-  // ---- SERIES ----
-  { t: "SERIES", q: "¿Qué número sigue? <code>3, 6, 9, 12, ?</code>", o: ["15", "14", "16", "18"], a: 0 },
-  { t: "SERIES", q: "¿Qué número sigue? <code>5, 10, 20, 40, ?</code>", o: ["80", "60", "50", "45"], a: 0 },
-  { t: "SERIES", q: "¿Qué número sigue? <code>1, 1, 2, 3, 5, 8, ?</code>", o: ["13", "11", "10", "16"], a: 0 },
-  { t: "SERIES", q: "¿Qué número sigue? <code>100, 90, 80, 70, ?</code>", o: ["60", "50", "65", "75"], a: 0 },
-  { t: "SERIES", q: "¿Qué número sigue? <code>1, 4, 9, 16, ?</code>", o: ["25", "20", "24", "32"], a: 0 },
-  { t: "SERIES", q: "¿Qué número falta? <code>2, 4, ?, 8, 10</code>", o: ["6", "5", "7", "3"], a: 0 },
-  { t: "SERIES", q: "¿Qué letra sigue? <code>A, C, E, G, ?</code>", o: ["I", "H", "J", "K"], a: 0 },
-  { t: "SERIES", q: "¿Qué sigue? <code>🔴 🔵 🔴 🔵 🔴 ?</code>", o: ["🔵", "🔴", "🟢", "🟡"], a: 0 },
-  { t: "SERIES", q: "¿Qué figura sigue? <code>▲ ■ ▲ ■ ▲ ?</code>", o: ["■", "▲", "●", "★"], a: 0 },
-  // ---- DEDUCCIÓN ----
-  { t: "DEDUCCIÓN", q: "Todos los gatos son animales. Michi es un gato. Entonces Michi es...", o: ["Un animal", "Un perro", "Una planta", "No se sabe"], a: 0 },
-  { t: "DEDUCCIÓN", q: "Ana es más alta que Luis. Luis es más alto que Pedro. ¿Quién es el <b>más bajo</b>?", o: ["Pedro", "Ana", "Luis", "Son iguales"], a: 0 },
-  { t: "DEDUCCIÓN", q: "Si llueve, el piso se moja. El piso está <b>seco</b>. ¿Llovió?", o: ["No", "Sí", "A veces", "Siempre"], a: 0 },
-  { t: "DEDUCCIÓN", q: "Ordena los cables: el <b>rojo</b> va antes que el <b>azul</b>, y el <b>verde</b> va al final.", o: ["Rojo, Azul, Verde", "Azul, Rojo, Verde", "Verde, Rojo, Azul", "Rojo, Verde, Azul"], a: 0 },
-  { t: "DEDUCCIÓN", q: "En una fila eres el 3° contando desde adelante y el 3° contando desde atrás. ¿Cuántas personas hay?", o: ["5", "6", "3", "7"], a: 0 },
-  { t: "DEDUCCIÓN", q: "Un servidor se reinicia cada 2 horas. Se reinició a las 10:00. ¿A qué hora se reinicia después de las 13:00?", o: ["14:00", "13:00", "15:00", "12:30"], a: 0 },
-  // ---- Y / O / NO (lógica de la computadora) ----
-  { t: "LÓGICA Y", q: "La puerta abre <b>solo si</b> tienes llave <b>Y</b> tarjeta. Tienes llave pero <b>no</b> tarjeta. ¿Abre?", o: ["No", "Sí", "A medias", "Solo de noche"], a: 0 },
-  { t: "LÓGICA O", q: "La alarma suena si se abre la puerta <b>O</b> la ventana. Se abrió la ventana. ¿Suena?", o: ["Sí", "No", "Solo si se abre la puerta", "Nunca"], a: 0 },
-  { t: "LÓGICA NO", q: "Si una luz <b>NO</b> está encendida, entonces está...", o: ["Apagada", "Encendida", "Rota", "Azul"], a: 0 },
-  { t: "LÓGICA Y", q: "Para entrar al servidor necesitas usuario <b>Y</b> contraseña. Tienes los dos. ¿Entras?", o: ["Sí", "No", "Solo con usuario", "Nunca"], a: 0 },
-  // ---- ACERTIJOS ----
-  { t: "ACERTIJO", q: "Un granjero tiene 10 ovejas. Se escapan todas <b>menos 3</b>. ¿Cuántas le quedan?", o: ["3", "7", "10", "0"], a: 0 },
-  { t: "ACERTIJO", q: "¿Cuántos meses del año tienen 28 días?", o: ["Todos (12)", "1", "2", "6"], a: 0 },
-  { t: "ACERTIJO", q: "El papá de María tiene 3 hijas: Lala, Lele y...", o: ["María", "Lili", "Lolo", "Lulu"], a: 0 },
-  { t: "ACERTIJO", q: "1 robot arma 1 caja en 5 minutos. ¿Cuánto tardan 5 robots en armar 5 cajas?", o: ["5 minutos", "25 minutos", "1 minuto", "10 minutos"], a: 0 },
-  { t: "ACERTIJO", q: "Tengo 8 caramelos y regalo la mitad. ¿Cuántos me quedan?", o: ["4", "2", "6", "8"], a: 0 },
-  { t: "ACERTIJO", q: "Hoy es miércoles. ¿Qué día fue <b>ayer</b>?", o: ["Martes", "Jueves", "Lunes", "Domingo"], a: 0 },
-  { t: "ACERTIJO", q: "Un reloj marca las 3:00. ¿Qué hora será en 4 horas?", o: ["7:00", "6:00", "8:00", "1:00"], a: 0 },
-  // ---- CÓDIGOS ----
-  { t: "CÓDIGO", q: "Si A=1, B=2, C=3... ¿cuánto vale <code>A + C</code>?", o: ["4", "3", "5", "6"], a: 0 },
-  { t: "CÓDIGO", q: "El candado se abre con <code>1-2-3</code> escrito <b>al revés</b>. ¿Cuál es el código?", o: ["3-2-1", "1-2-3", "2-3-1", "3-1-2"], a: 0 },
-  { t: "CÓDIGO", q: "Lee la palabra al revés: <code>RODIVRES</code>", o: ["SERVIDOR", "VERDURAS", "DIVERSO", "SERVIR"], a: 0 },
-  { t: "CÓDIGO", q: "Si <code>HOLA</code> se escribe <code>H0L4</code>, ¿cómo se escribe <code>CASA</code>?", o: ["C4S4", "CASA", "K4Z4", "C0S0"], a: 0 },
-  { t: "CÓDIGO", q: "Código secreto: A=1, B=2, C=3... ¿Qué palabra es <code>1-13-15-18</code>?", o: ["AMOR", "ROMA", "MORA", "ARMO"], a: 0 },
-  { t: "CÓDIGO", q: "¿Cuál es el número <b>mayor</b>?", o: ["77", "74", "47", "71"], a: 0 },
-  // ---- un poco de seguridad ----
-  { t: "SEGURIDAD", q: "¿Cuál de estas contraseñas es <b>más segura</b>?", o: ["Gato#2024!Azul", "123456", "contraseña", "aaaaaa"], a: 0 },
-  { t: "SEGURIDAD", q: "Te llega un mensaje: <i>\"¡Ganaste un celular! Dame tu contraseña\"</i>. ¿Qué haces?", o: ["No la doy, es una estafa", "Se la doy rápido", "Le mando mi tarjeta", "Se lo reenvío a todos"], a: 0 },
-  { t: "SEGURIDAD", q: "Una computadora solo entiende dos números. ¿Cuáles?", o: ["0 y 1", "5 y 6", "8 y 9", "10 y 20"], a: 0 },
-  // ---- más acertijos y lógica ----
-  { t: "ACERTIJO", q: "¿Qué pesa más: 1 kilo de algodón o 1 kilo de hierro?", o: ["Pesan lo mismo", "El hierro", "El algodón", "Depende del día"], a: 0 },
-  { t: "ACERTIJO", q: "En una carrera adelantas al que va <b>segundo</b>. ¿En qué lugar quedas?", o: ["Segundo", "Primero", "Tercero", "Último"], a: 0 },
-  { t: "ACERTIJO", q: "Un tren <b>eléctrico</b> va hacia el norte. ¿Hacia dónde va el humo?", o: ["No tiene humo", "Al norte", "Al sur", "Hacia arriba"], a: 0 },
-  { t: "ACERTIJO", q: "3 gatos atrapan 3 ratones en 3 minutos. ¿Cuántos minutos tarda 1 gato en atrapar 1 ratón?", o: ["3", "1", "9", "6"], a: 0 },
-  { t: "ACERTIJO", q: "Si ayer fue domingo, ¿qué día es <b>mañana</b>?", o: ["Martes", "Lunes", "Sábado", "Miércoles"], a: 0 },
-  { t: "ACERTIJO", q: "Estás en una fila de 10 personas y eres el <b>primero</b>. ¿Cuántas personas hay detrás de ti?", o: ["9", "10", "11", "1"], a: 0 },
-  { t: "ACERTIJO", q: "¿Cuántas patas tienen 2 perros?", o: ["8", "4", "6", "10"], a: 0 },
-  { t: "ACERTIJO", q: "Si una docena son 12, ¿cuánto es <b>media docena</b>?", o: ["6", "12", "24", "3"], a: 0 },
-  { t: "ACERTIJO", q: "Un papá y su hijo tienen juntos 36 años. El papá tiene 30. ¿Cuántos años tiene el hijo?", o: ["6", "30", "36", "66"], a: 0 },
-  { t: "CÓDIGO", q: "Si 🍎 + 🍎 = 10, ¿cuánto vale una 🍎?", o: ["5", "10", "2", "20"], a: 0 },
-  { t: "CÓDIGO", q: "Si 🔑 = 5 y 🔒 = 3, ¿cuánto es 🔑 + 🔒?", o: ["8", "2", "15", "53"], a: 0 },
-  { t: "CÓDIGO", q: "La contraseña es el número que está <b>entre</b> 7 y 9. ¿Cuál es?", o: ["8", "7", "9", "6"], a: 0 },
-  { t: "INTRUSO", q: "¿Cuál palabra <b>NO</b> es un color?", o: ["Mesa", "Rojo", "Azul", "Verde"], a: 0 },
-  { t: "INTRUSO", q: "¿Cuál <b>NO</b> es un animal?", o: ["Silla", "Perro", "Gato", "León"], a: 0 },
-  { t: "INTRUSO", q: "¿Cuál <b>NO</b> es una fruta?", o: ["Zapato", "Mango", "Pera", "Uva"], a: 0 },
-  { t: "INTRUSO", q: "¿Cuál número es <b>par</b>?", o: ["18", "7", "13", "21"], a: 0 },
-  { t: "SERIES", q: "¿Qué sigue? <code>lunes, martes, miércoles, ?</code>", o: ["Jueves", "Viernes", "Domingo", "Lunes"], a: 0 },
-  { t: "SERIES", q: "¿Qué sigue? <code>enero, febrero, marzo, ?</code>", o: ["Abril", "Mayo", "Junio", "Diciembre"], a: 0 },
-  { t: "DEDUCCIÓN", q: "Juan es mayor que Ana. Ana es mayor que Luis. ¿Quién es el <b>menor</b>?", o: ["Luis", "Juan", "Ana", "Son iguales"], a: 0 },
-  { t: "DEDUCCIÓN", q: "¿Qué figura tiene 4 lados iguales?", o: ["Cuadrado", "Triángulo", "Círculo", "Óvalo"], a: 0 },
-  { t: "LÓGICA O", q: "Puedes entrar si tienes tarjeta <b>O</b> código. No tienes tarjeta, pero sí el código. ¿Entras?", o: ["Sí", "No", "Solo con tarjeta", "Nunca"], a: 0 },
-  { t: "LÓGICA NO", q: "La alarma suena cuando la puerta <b>NO</b> está cerrada. La puerta está abierta. ¿Suena?", o: ["Sí", "No", "Solo de día", "Nunca"], a: 0 },
-  { t: "LÓGICA Y", q: "El robot avanza solo si hay luz verde <b>Y</b> el camino está libre. Hay luz verde, pero hay una pared. ¿Avanza?", o: ["No", "Sí", "Avanza rápido", "Salta la pared"], a: 0 },
-];
-
-// ================== PREGUNTAS DE TECNOLOGÍA (cultura general de computación) ==================
-const TECH_QUESTIONS = [
-  // ---- inteligencia artificial ----
-  { t: "IA", q: "¿Cuál de estos <b>NO</b> es una inteligencia artificial?", o: ["Una calculadora", "ChatGPT", "Gemini", "Copilot"], a: 0 },
-  { t: "IA", q: "¿Cuál de estos <b>SÍ</b> es una inteligencia artificial?", o: ["ChatGPT", "Paint", "Bloc de notas", "Calculadora"], a: 0 },
-  { t: "IA", q: "¿Qué es una inteligencia artificial (IA)?", o: ["Un programa que aprende y responde", "Un robot de cocina", "Un tipo de cable", "Un virus"], a: 0 },
-  { t: "IA", q: "Una inteligencia artificial aprende a partir de...", o: ["Muchos datos", "Comida", "Música fuerte", "Electricidad sola"], a: 0 },
-  // ---- correo electrónico ----
-  { t: "CORREO", q: "¿Para qué sirve un <b>correo electrónico</b>?", o: ["Enviar mensajes y archivos por internet", "Imprimir fotos", "Cargar el celular", "Ver televisión"], a: 0 },
-  { t: "CORREO", q: "¿Qué símbolo lleva <b>siempre</b> un correo electrónico?", o: ["@", "#", "$", "%"], a: 0 },
-  { t: "CORREO", q: "¿Cuál es un correo electrónico <b>válido</b>?", o: ["ana@gmail.com", "ana.gmail.com", "ana#gmail", "www.ana.com"], a: 0 },
-  { t: "CORREO", q: "¿Cuál de estos es un servicio de <b>correo</b>?", o: ["Gmail", "Excel", "Paint", "TikTok"], a: 0 },
-  { t: "CORREO", q: "En un correo, el <b>\"Asunto\"</b> es...", o: ["El tema del mensaje", "La contraseña", "La foto de perfil", "El precio"], a: 0 },
-  // ---- tipos de PC ----
-  { t: "TIPOS DE PC", q: "¿Cuál de estos es un <b>tipo de computadora</b>?", o: ["Laptop", "Licuadora", "Lavadora", "Microondas"], a: 0 },
-  { t: "TIPOS DE PC", q: "Una computadora <b>portátil</b> también se llama...", o: ["Laptop", "Router", "Monitor", "Impresora"], a: 0 },
-  { t: "TIPOS DE PC", q: "Una computadora de <b>escritorio</b> (desktop)...", o: ["Se queda fija en una mesa", "Cabe en el bolsillo", "Funciona sin luz", "Es solo una pantalla"], a: 0 },
-  { t: "TIPOS DE PC", q: "¿Qué tipo de computadora guarda las páginas web y atiende a <b>muchos usuarios</b> a la vez?", o: ["Un servidor", "Una laptop", "Una calculadora", "Un monitor"], a: 0 },
-  { t: "DISPOSITIVOS", q: "Una <b>tablet</b> es...", o: ["Un dispositivo con pantalla táctil", "Un tipo de teclado", "Una impresora", "Un cable"], a: 0 },
-  { t: "TIPOS DE PC", q: "¿Qué significa <b>PC</b>?", o: ["Computadora Personal", "Pantalla de Color", "Programa Central", "Punto de Conexión"], a: 0 },
-  // ---- teclado y partes ----
-  { t: "TECLADO", q: "¿Cuántas teclas tiene <b>en promedio</b> un teclado de computadora?", o: ["Unas 105", "Unas 20", "Unas 50", "Unas 500"], a: 0 },
-  { t: "TECLADO", q: "¿Qué letra tiene el teclado en <b>español</b> que no tiene el inglés?", o: ["Ñ", "W", "K", "Z"], a: 0 },
-  { t: "TECLADO", q: "¿Cuál es la tecla <b>más larga</b> del teclado?", o: ["La barra espaciadora", "Enter", "Esc", "La letra A"], a: 0 },
-  { t: "TECLADO", q: "¿Qué tecla deja escribir todo en <b>MAYÚSCULAS</b>?", o: ["Bloq Mayús", "Enter", "Espacio", "Esc"], a: 0 },
-  { t: "TECLADO", q: "¿Qué hacen las teclas <code>Ctrl + V</code>?", o: ["Pegar", "Copiar", "Borrar todo", "Apagar"], a: 0 },
-  { t: "TECLADO", q: "¿Qué hacen las teclas <code>Ctrl + Z</code>?", o: ["Deshacer", "Guardar", "Cerrar", "Imprimir"], a: 0 },
-  { t: "PARTES DE LA PC", q: "¿Con qué mueves la flechita en la pantalla?", o: ["Con el mouse", "Con la impresora", "Con el monitor", "Con los parlantes"], a: 0 },
-  { t: "PARTES DE LA PC", q: "¿Dónde ves las imágenes de la computadora?", o: ["En el monitor", "En el teclado", "En el mouse", "En el cable"], a: 0 },
-  { t: "PARTES DE LA PC", q: "¿Qué aparato pasa lo de la pantalla a <b>papel</b>?", o: ["La impresora", "El parlante", "El micrófono", "El router"], a: 0 },
-  { t: "PARTES DE LA PC", q: "¿Para qué sirve una <b>memoria USB</b>?", o: ["Guardar y llevar archivos", "Enfriar la PC", "Tomar fotos", "Dar internet"], a: 0 },
-  { t: "PARTES DE LA PC", q: "¿Qué es más grande?", o: ["1 GB (gigabyte)", "1 MB (megabyte)", "Son iguales", "No se pueden comparar"], a: 0 },
-  // ---- programas e internet ----
-  { t: "PROGRAMAS", q: "¿Qué es <b>Windows</b>?", o: ["Un sistema operativo", "Un navegador", "Una red social", "Un antivirus"], a: 0 },
-  { t: "PROGRAMAS", q: "¿Cuál es un sistema operativo de <b>celular</b>?", o: ["Android", "WhatsApp", "Excel", "Google Maps"], a: 0 },
-  { t: "PROGRAMAS", q: "¿Qué programa se usa para escribir <b>documentos</b>?", o: ["Word", "Paint", "Calculadora", "Spotify"], a: 0 },
-  { t: "PROGRAMAS", q: "¿Para qué sirve <b>Excel</b>?", o: ["Hacer tablas y cálculos", "Editar videos", "Escuchar música", "Llamar por teléfono"], a: 0 },
-  { t: "INTERNET", q: "Guardar tus archivos en \"la <b>nube</b>\" significa guardarlos...", o: ["En internet", "En el cielo", "En una USB", "En papel"], a: 0 },
-  { t: "INTERNET", q: "¿Qué aparato lleva el internet a tu casa?", o: ["El módem / router", "La impresora", "El teclado", "El monitor"], a: 0 },
-  { t: "INTERNET", q: "¿Qué red social es de <b>videos cortos</b>?", o: ["TikTok", "Gmail", "Word", "Excel"], a: 0 },
-  { t: "INTERNET", q: "Para conectarte a un Wi-Fi casi siempre necesitas...", o: ["La contraseña de la red", "Una impresora", "Un cable USB", "Un correo"], a: 0 },
-];
+// ================== PREGUNTAS ==================
+// El banco base está en preguntas-base.js. Si el juego lo sirve el VPS, al empezar cada partida
+// se piden las preguntas ACTIVAS al servidor (las que se manejan desde /monitor).
+let QUESTIONS = window.PREGUNTAS_BASE.logica;
+let TECH_QUESTIONS = window.PREGUNTAS_BASE.tecnologia;
+let useGenerators = true;
 
 // ================== PREGUNTAS AL AZAR (RANDOM) ==================
 // Cada vez que se usan crean una pregunta nueva con números al azar, así nunca se repiten.
@@ -584,16 +482,51 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) trac
 let actx, master, musicBus, muted = false;
 try { muted = localStorage.getItem("esr_muted") === "1"; } catch (e) {}
 
+// en celular los parlantes son pequeños: más volumen (el compresor evita que se distorsione)
+const IS_TOUCH = matchMedia("(pointer: coarse)").matches;
+const VOL = IS_TOUCH ? 1.8 : 1;
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
 // el audio solo puede arrancar después de un toque/clic del jugador (regla de los navegadores)
 function audio() {
   if (!actx) {
     actx = new (window.AudioContext || window.webkitAudioContext)();
-    master = actx.createGain(); master.gain.value = muted ? 0 : 1; master.connect(actx.destination);
+    const comp = actx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2;
+    comp.connect(actx.destination);
+    master = actx.createGain(); master.gain.value = muted ? 0 : VOL; master.connect(comp);
     musicBus = actx.createGain(); musicBus.gain.value = 0.55; musicBus.connect(master);
   }
-  if (actx.state === "suspended") actx.resume();
+  if (actx.state !== "running") actx.resume().catch(() => {});
   return actx;
 }
+
+// iPhone: con el interruptor de silencio activado, iOS calla los sonidos del juego.
+// Si a la vez suena un <audio> (aunque sea silencio), iOS trata la página como reproductor y deja sonar todo.
+let iosKeepAlive;
+function silentWavUrl() {
+  const n = 8000, b = new Uint8Array(44 + n), v = new DataView(b.buffer);
+  const s = (o, t) => [...t].forEach((c, i) => b[o + i] = c.charCodeAt(0));
+  s(0, "RIFF"); v.setUint32(4, 36 + n, true); s(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); s(36, "data"); v.setUint32(40, n, true);
+  b.fill(128, 44);   // silencio en audio de 8 bits
+  return URL.createObjectURL(new Blob([b], { type: "audio/wav" }));
+}
+
+// se llama con CUALQUIER toque/clic/tecla: así el sonido se activa en todos los celulares
+function unlockAudio() {
+  try {
+    if (navigator.audioSession) navigator.audioSession.type = "playback";   // Safari 17+: ignora el modo silencio
+    audio();
+    const src = actx.createBufferSource();                                    // sonido vacío: "despierta" el audio en iOS viejos
+    src.buffer = actx.createBuffer(1, 1, 22050); src.connect(actx.destination); src.start(0);
+    if (IS_IOS) {
+      if (!iosKeepAlive) { iosKeepAlive = new Audio(silentWavUrl()); iosKeepAlive.loop = true; iosKeepAlive.setAttribute("playsinline", ""); }
+      if (iosKeepAlive.paused) iosKeepAlive.play().catch(() => {});
+    }
+  } catch (e) {}
+}
+["touchend", "click", "keydown", "pointerup"].forEach(ev => document.addEventListener(ev, unlockAudio, { capture: true, passive: true }));
 
 function beep(f, d = 0.08, type = "square", vol = 0.05, delay = 0) {
   try {
@@ -608,7 +541,7 @@ function beep(f, d = 0.08, type = "square", vol = 0.05, delay = 0) {
 function setMuted(m) {
   muted = m;
   try { localStorage.setItem("esr_muted", m ? "1" : "0"); } catch (e) {}
-  if (master) master.gain.setTargetAtTime(m ? 0 : 1, actx.currentTime, 0.02);
+  if (master) master.gain.setTargetAtTime(m ? 0 : VOL, actx.currentTime, 0.02);
   $("btnMute").textContent = m ? "🔇" : "🔊";
 }
 
@@ -684,7 +617,8 @@ function hat(t) {
 // pausa el audio si el jugador cambia de app o de pestaña
 document.addEventListener("visibilitychange", () => {
   if (!actx) return;
-  document.hidden ? actx.suspend() : actx.resume();
+  if (document.hidden) { actx.suspend(); if (iosKeepAlive) iosKeepAlive.pause(); }
+  else actx.resume().catch(() => {});   // si el celular no deja, se reactiva con el siguiente toque (unlockAudio)
 });
 const sfx = {
   dot: () => beep(900, 0.03, "square", 0.012),
@@ -758,8 +692,15 @@ function updateHud() {
 }
 
 function toast(t) {
+  placeToast();
   $("toast").textContent = t; $("toast").classList.add("show");
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").classList.remove("show"), 2600);
+}
+// la alerta va en la mitad del tablero contraria a la del robot (se revisa en cada cuadro)
+let toastTop = false;
+function placeToast() {
+  const top = !!player && player.y >= ROWS / 2;
+  if (top !== toastTop) { toastTop = top; $("toast").classList.toggle("top", top); }
 }
 
 function show(id, on) { $(id).classList.toggle("show", on); }
@@ -804,6 +745,7 @@ function startGame() {
   show("ovMenu", false); show("ovEnd", false); show("ovLevel", false);
   musicStart();
   track("start");
+  loadQuestions();   // toma los cambios hechos en /monitor sin recargar la página
   state = "play"; toast("NIVEL 1 · " + LEVELS[0].name + " · ¡Busca las terminales!");
 }
 
@@ -956,7 +898,8 @@ function levelComplete() {
 
 // ================== PREGUNTAS ==================
 let qCurrent, qTimer, qStart, qDone, qCallback, qLastSec;
-// 40% tecnología, 30% lógica de la lista, 30% generadas al azar.
+// 40% tecnología, 30% lógica de la lista, 30% generadas al azar
+// (si alguna lista está vacía o las generadas están apagadas desde /monitor, se reparte entre las demás).
 // Las de las listas no se repiten hasta que se agota cada lista.
 const pools = { tech: [], logic: [] };
 function fromPool(name, list) {
@@ -964,12 +907,34 @@ function fromPool(name, list) {
   return pools[name].pop();
 }
 function nextQuestion() {
-  const r = Math.random();
-  const q = r < 0.4 ? fromPool("tech", TECH_QUESTIONS)
-          : r < 0.7 ? fromPool("logic", QUESTIONS)
+  const w = [["tech", TECH_QUESTIONS.length ? 0.4 : 0], ["logic", QUESTIONS.length ? 0.3 : 0], ["gen", useGenerators ? 0.3 : 0]];
+  const total = w.reduce((s, [, p]) => s + p, 0);
+  let r = Math.random() * total, kind = "gen";
+  for (const [k, p] of w) { if (r < p) { kind = k; break; } r -= p; }
+  const q = kind === "tech" ? fromPool("tech", TECH_QUESTIONS)
+          : kind === "logic" ? fromPool("logic", QUESTIONS)
           : pick(GENERATORS)();
   return { ...q, opts: shuffle(q.o.map((txt, i) => ({ txt, ok: i === q.a }))) };
 }
+
+// pide al servidor las preguntas activas (las que se manejan desde /monitor)
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+async function loadQuestions() {
+  if (!TRACK) return;                       // GitHub Pages o archivo local: se usa el banco base completo
+  try {
+    const r = await fetch("api/questions", { cache: "no-store" });
+    if (!r.ok) return;
+    const d = await r.json();
+    // las agregadas desde el panel llegan como texto plano: se escapan para mostrarlas tal cual
+    const fix = q => q.plain ? { ...q, q: escapeHtml(q.q), o: q.o.map(escapeHtml) } : q;
+    const logic = d.questions.filter(q => q.cat === "logica").map(fix);
+    const tech = d.questions.filter(q => q.cat === "tecnologia").map(fix);
+    const sig = JSON.stringify([logic.length, tech.length, d.generators, d.version]);
+    if (sig !== loadQuestions.sig) { pools.tech = []; pools.logic = []; loadQuestions.sig = sig; }
+    QUESTIONS = logic; TECH_QUESTIONS = tech; useGenerators = !!d.generators;
+  } catch (e) { /* sin conexión: se siguen usando las que ya había */ }
+}
+loadQuestions();
 
 function askQuestion(title, color, cb) {
   qCurrent = nextQuestion(); qCallback = cb; qDone = false; qLastSec = TIME_LIMIT;
@@ -1194,6 +1159,7 @@ function loop(t) {
   update(dt, t);
   draw(t);
   drawIcons(t);
+  placeToast();
   requestAnimationFrame(loop);
 }
 
